@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Large data files (>100MB) - Download from Google Drive
+data/PPG_1.mat
+data/PPG_2.mat
+data/PPG_3.mat
+
+# Generated outputs
+output/
+*.png
+*.jpg
+*.jpeg
+*.npz
+
+# Training outputs
+checkpoints/
+checkpoints_high_acc/
+runs/
+logs/
+*.pth
+*.pt
+
+# Generated datasets
+batch_demo/
+batch_output/
+ml_data/
+ml_dataset/
+training_data/
+test_balanced/
+dataset/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Compressed files
+*.tar.gz
+*.zip
+*.rar
+
+# CSV exports
+*.csv
+
+# Test files
+test_*.py
+diagnose_*.py
