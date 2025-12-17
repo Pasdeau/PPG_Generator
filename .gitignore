@@ -76,7 +76,6 @@ dataset/
 *~
 
 # Compressed files
-*.tar.gz
 *.zip
 *.rar
 
