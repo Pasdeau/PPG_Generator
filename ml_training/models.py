@@ -280,7 +280,7 @@ class ResNet1D_Classifier(nn.Module):
     适用于大规模数据集
     """
     
-    def __init__(self, input_length=8000, num_classes=5):
+    def __init__(self, input_length=8000, num_classes=5, dropout=0.5):
         super(ResNet1D_Classifier, self).__init__()
         
         self.conv1 = nn.Conv1d(1, 64, kernel_size=15, stride=2, padding=7)
@@ -293,6 +293,7 @@ class ResNet1D_Classifier(nn.Module):
         self.layer3 = self._make_layer(128, 256, 2, stride=2)
         
         self.avgpool = nn.AdaptiveAvgPool1d(1)
+        self.dropout = nn.Dropout(dropout)  # 添加dropout防止过拟合
         self.fc = nn.Linear(256, num_classes)
     
     def _make_layer(self, in_channels, out_channels, num_blocks, stride=1):
@@ -312,6 +313,7 @@ class ResNet1D_Classifier(nn.Module):
         
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
+        x = self.dropout(x)  # 应用dropout
         x = self.fc(x)
         
         return x
