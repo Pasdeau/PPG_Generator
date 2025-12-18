@@ -1,3 +1,9 @@
 numpy>=1.21.0
 scipy>=1.7.0
 matplotlib>=3.4.0
+torch>=2.0.0
+pyserial
+bleak
+pyqtgraph
+PyQt6
+tqdm

@@ -30,41 +30,53 @@ def main():
     print("PPG Signal Generator (Python Version)")
     print("=" * 60)
     
-    # ----- Configuration Parameters -----
-    
+    import argparse
+    parser = argparse.ArgumentParser(description='PPG Signal Generator')
+    parser.add_argument('--num_beats', type=int, default=10, help='Number of beats')
+    parser.add_argument('--pulse_type', type=int, default=1, help='Pulse type (1-5)')
+    parser.add_argument('--no_artifacts', action='store_true', help='Disable artifacts')
+    parser.add_argument('--dur_mu0', type=float, default=15.0, help='Artifact-free duration (s)')
+    parser.add_argument('--artifact_type', type=int, default=2, help='Artifact type (1-4)')
+    parser.add_argument('--dur_mu', type=float, default=2.0, help='Artifact duration (s)')
+    args = parser.parse_args()
+
     # Output settings
     output_dir = 'output'
     output_prefix = 'python_ppg_test'
-    save_npz = True   # Save as NumPy compressed format
-    save_csv = False  # Save as CSV (can be large)
+    save_npz = True
+    save_csv = False
     
-    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
     # PPG Generation Parameters
-    num_beats = 10  # Number of heartbeats to generate
-    pulse_type = 1  # PPG pulse type (1-5)
-    Fd = 1000       # Sampling frequency (Hz)
+    num_beats = args.num_beats
+    pulse_type = args.pulse_type
+    Fd = 1000
     
     # RR Interval Parameters
-    use_synthetic_rr = True  # Use synthetic RR intervals (True) or load from file (False)
-    rhythm_type = 'SR'       # 'SR' = Sinus Rhythm, 'AF' = Atrial Fibrillation
-    mean_rr = 800            # Mean RR interval (ms)
-    std_rr = 50              # RR standard deviation (ms)
+    use_synthetic_rr = True
+    rhythm_type = 'SR'
+    mean_rr = 800
+    std_rr = 50
     
     # Artifact Parameters
-    add_artifacts = True     # Whether to add artifacts
-    # Artifact type probabilities: [device_displacement, forearm_motion, hand_motion, poor_contact]
-    typ_artifact = np.array([0, 1, 0, 0])  # Only poor contact in this example
-    dur_mu0 = 15  # Mean duration of artifact-free intervals (seconds)
-    dur_mu = 2    # Mean duration of artifacts (seconds)
+    add_artifacts = not args.no_artifacts
+    # Create one-hot vector for artifact type
+    typ_artifact = np.zeros(4)
+    if 1 <= args.artifact_type <= 4:
+        typ_artifact[args.artifact_type - 1] = 1
+    else:
+        typ_artifact[1] = 1 # Default to type 2
+        
+    dur_mu0 = args.dur_mu0
+    dur_mu = args.dur_mu
     
     print(f"\nConfiguration:")
     print(f"  Number of beats: {num_beats}")
     print(f"  Pulse type: {pulse_type}")
     print(f"  Sampling frequency: {Fd} Hz")
     print(f"  Rhythm type: {rhythm_type}")
-    print(f"  Add artifacts: {add_artifacts}")
+    print(f"  Add artifacts: {add_artifacts} (Interval: {dur_mu0}s)")
     
     # ----- Generate or Load RR Intervals -----
     

@@ -11,7 +11,7 @@ import scipy.io as sio
 import os
 
 
-def load_artifact_params(filepath='artifact_param.mat'):
+def load_artifact_params(filepath='data/artifact_param.mat'):
     """
     Load artifact parameters from .mat file
     
