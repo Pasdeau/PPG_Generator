@@ -7,7 +7,8 @@ PPG信号分类 - 模型定义
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torch.nn.functional as F
+from ml_training.models.unet_ppg import UNetPPG
 
 class CNN1D_Classifier(nn.Module):
     """
@@ -341,12 +342,17 @@ def create_model(model_type='cnn', input_length=8000, num_classes=5, **kwargs):
         'cnn': CNN1D_Classifier,
         'lstm': LSTM_Classifier,
         'cnn_lstm': CNN_LSTM_Classifier,
-        'resnet': ResNet1D_Classifier
+        'resnet': ResNet1D_Classifier,
+        'unet': UNetPPG
     }
     
     if model_type not in models:
         raise ValueError(f"Unknown model type: {model_type}. Choose from {list(models.keys())}")
     
+    # UNetPPG signature is different (kwargs handles extra args)
+    if model_type == 'unet':
+       return UNetPPG(**kwargs)
+       
     model = models[model_type](input_length=input_length, num_classes=num_classes, **kwargs)
     return model
 

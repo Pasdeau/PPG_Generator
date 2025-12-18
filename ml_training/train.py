@@ -18,7 +18,7 @@ import sys
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
 
-from ml_training.models import create_model
+from ml_training.model_factory import create_model
 from ml_training.dataset import create_dataloaders
 
 
@@ -38,6 +38,9 @@ class Trainer:
         
         # TensorBoard
         self.writer = SummaryWriter(log_dir='runs')
+
+        # Scheduler
+        self.scheduler = None
         
         # 早停
         self.best_val_loss = float('inf')
@@ -145,6 +148,13 @@ class Trainer:
                 print(f"  ✓ 保存最佳模型 (val_loss: {val_loss:.4f})")
             else:
                 self.patience_counter += 1
+            
+            # 学习率调整
+            if self.scheduler is not None:
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(val_loss)
+                else:
+                    self.scheduler.step()
             
             # 早停
             if self.patience_counter >= self.patience:

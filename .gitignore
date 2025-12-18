@@ -85,3 +85,8 @@ dataset/
 # Test files
 test_*.py
 diagnose_*.py
+*.tar.gz
+ppg_training_data/
+ml_dataset_v2/
+test_dataset/
+*.mat

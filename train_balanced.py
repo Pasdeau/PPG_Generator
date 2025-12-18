@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from ml_training.models import create_model
+from ml_training.model_factory import create_model
 from ml_training.dataset import create_dataloaders
 from ml_training.train import Trainer
 
