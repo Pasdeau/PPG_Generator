@@ -583,6 +583,7 @@ Use the included `deploy_and_setup.sh` or SLURM scripts (`slurm_datagen_v2.sh`, 
 ## 👥 Credits
 
 **Original MATLAB Implementation:**
+- **Source**: [PhysioNet: ECG and PPG signals simulator for arrhythmia detection (v1.3.1)](https://physionet.org/content/ecg-ppg-simulator-arrhythmia/1.3.1/)
 - Andrius Solosenko (PPG generation)
 - Birute Paliakaite (Artifact generation)
 - Biomedical Engineering Institute, Kaunas University of Technology
