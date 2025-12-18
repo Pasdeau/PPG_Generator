@@ -530,17 +530,23 @@ For very long signals, reduce `num_beats` or generate in batches.
 
 ## 🔄 Version History
 
+### v2.3 Stable (2025-12-18)
+- ✅ **Critical Fix**: Resolved UNet channel mismatch (512 vs 384) in upsampling layers.
+- ✅ **Stability**: Validated on remote A100 GPU cluster.
+- ✅ **Archive**: Created `TAR_package/PPG_Python_v2.3_stable.tar.gz`.
+
 ### v2.2 (2025-12-18)
-- ✅ **Multi-Task UNet Architecture**: Simultaneous Waveform Classification and Noise Segmentation.
-- ✅ **Robust Data Generation**: 
-  - Chunked saving to prevent memory overflow (50k+ samples).
-  - Mixed noise injection (0-20dB SNR).
-  - Precise sample-level artifact masks.
-- ✅ **Remote Training Support**:
-  - SLURM scripts for independent Data Generation and Training.
-  - Deployment-ready `.tar.gz` packaging logic.
-- ✅ **Real-Time Inference Ready**:
-  - `inference.py` for live signal processing (requires trained model).
+- ✅ **Robust Data Generation**: Implemented "Chunked Saving" (1000 samples/file) to prevent remote memory overflow.
+- ✅ **Remote Workflow**: Decoupled `slurm_datagen_v2.sh` and `slurm_train_v2.sh`.
+
+### v2.1 (2025-12-18)
+- ✅ **Deployment Logic**: Optimized `deploy_and_setup.sh` for remote environment synchronization.
+- ✅ **Namespace Fix**: Renamed `models.py` to `model_factory.py` to avoid potential conflicts.
+
+### v2.0 (2025-12-18)
+- ✅ **Multi-Task UNet Architecture**: Simultaneous Waveform Classification + Noise Segmentation.
+- ✅ **New Dataset**: Created `generate_segmentation_data.py` for `(Signal, Mask, Label)` triplets.
+- ✅ **Real-Time Inference**: Added `inference.py` class for live signal processing.
 
 ### v1.1 (2024-12-15)
 - ✅ **FFT Peak Annotations**: Automatic detection and labeling of top 4 frequency peaks
