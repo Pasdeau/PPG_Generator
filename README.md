@@ -542,14 +542,14 @@ For very long signals, reduce `num_beats` or generate in batches.
 - ✅ **Real-Time Inference Ready**:
   - `inference.py` for live signal processing (requires trained model).
 
-### v1.1 (2024-12-17)
+### v1.1 (2024-12-15)
 - ✅ **FFT Peak Annotations**: Automatic detection and labeling of top 4 frequency peaks
 - ✅ **Noise Reduction**: Reduced to 0.1% for clean waveforms matching MATLAB reference
 - ✅ **Artifact Parameter Guide**: Added `verify_artifact_params.py` for parameter tuning
 - ✅ **Enhanced Documentation**: Detailed artifact control and noise level explanations
 - ✅ **Improved Visualizations**: Color-coded peak markers with frequency and bpm labels
 
-### v1.0 (2024-12-17)
+### v1.0 (2024-12-12)
 - ✅ Perfect beat-to-beat continuity with baseline inheritance
 - ✅ HR-respiratory coupling (physiological 4.5:1 ratio)
 - ✅ Multi-source physiological noise for realistic FFT
