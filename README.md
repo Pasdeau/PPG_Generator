@@ -530,6 +530,18 @@ For very long signals, reduce `num_beats` or generate in batches.
 
 ## 🔄 Version History
 
+### v2.2 (2025-12-18)
+- ✅ **Multi-Task UNet Architecture**: Simultaneous Waveform Classification and Noise Segmentation.
+- ✅ **Robust Data Generation**: 
+  - Chunked saving to prevent memory overflow (50k+ samples).
+  - Mixed noise injection (0-20dB SNR).
+  - Precise sample-level artifact masks.
+- ✅ **Remote Training Support**:
+  - SLURM scripts for independent Data Generation and Training.
+  - Deployment-ready `.tar.gz` packaging logic.
+- ✅ **Real-Time Inference Ready**:
+  - `inference.py` for live signal processing (requires trained model).
+
 ### v1.1 (2024-12-17)
 - ✅ **FFT Peak Annotations**: Automatic detection and labeling of top 4 frequency peaks
 - ✅ **Noise Reduction**: Reduced to 0.1% for clean waveforms matching MATLAB reference
@@ -544,6 +556,27 @@ For very long signals, reduce `num_beats` or generate in batches.
 - ✅ Cubic spline baseline correction
 - ✅ MATLAB-calibrated pulse parameters
 - ✅ Comprehensive documentation
+
+---
+
+## 🧠 V2.0 Deep Learning Workflow
+
+### 1. Data Generation (Segmentation)
+Generates `(Signal, Mask, Label)` triplets for UNet training.
+```bash
+# Generate 50,000 samples with chunking
+python generate_segmentation_data.py --num_samples 50000 --output_dir ml_dataset_v2
+```
+
+### 2. Training (Multi-Task UNet)
+Trains the model to predict both **Waveform Class (1-5)** and **Artifact Mask (0-4)**.
+```bash
+# Train on GPU
+python train_segmentation.py --data_path ml_dataset_v2
+```
+
+### 3. Remote Deployment
+Use the included `deploy_and_setup.sh` or SLURM scripts (`slurm_datagen_v2.sh`, `slurm_train_v2.sh`) for cluster execution.
 
 ---
 
