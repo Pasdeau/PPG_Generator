@@ -535,27 +535,27 @@ For very long signals, reduce `num_beats` or generate in batches.
 - ✅ **Stability**: Validated on remote A100 GPU cluster.
 - ✅ **Archive**: Created `TAR_package/PPG_Python_v2.3_stable.tar.gz`.
 
-### v2.2 (2025-12-18)
+### v2.2 (2025-12-17)
 - ✅ **Robust Data Generation**: Implemented "Chunked Saving" (1000 samples/file) to prevent remote memory overflow.
 - ✅ **Remote Workflow**: Decoupled `slurm_datagen_v2.sh` and `slurm_train_v2.sh`.
 
-### v2.1 (2025-12-18)
+### v2.1 (2025-12-11)
 - ✅ **Deployment Logic**: Optimized `deploy_and_setup.sh` for remote environment synchronization.
 - ✅ **Namespace Fix**: Renamed `models.py` to `model_factory.py` to avoid potential conflicts.
 
-### v2.0 (2025-12-18)
+### v2.0 (2025-12-04)
 - ✅ **Multi-Task UNet Architecture**: Simultaneous Waveform Classification + Noise Segmentation.
 - ✅ **New Dataset**: Created `generate_segmentation_data.py` for `(Signal, Mask, Label)` triplets.
 - ✅ **Real-Time Inference**: Added `inference.py` class for live signal processing.
 
-### v1.1 (2024-12-15)
+### v1.1 (2024-11-27)
 - ✅ **FFT Peak Annotations**: Automatic detection and labeling of top 4 frequency peaks
 - ✅ **Noise Reduction**: Reduced to 0.1% for clean waveforms matching MATLAB reference
 - ✅ **Artifact Parameter Guide**: Added `verify_artifact_params.py` for parameter tuning
 - ✅ **Enhanced Documentation**: Detailed artifact control and noise level explanations
 - ✅ **Improved Visualizations**: Color-coded peak markers with frequency and bpm labels
 
-### v1.0 (2024-12-12)
+### v1.0 (2024-11-24)
 - ✅ Perfect beat-to-beat continuity with baseline inheritance
 - ✅ HR-respiratory coupling (physiological 4.5:1 ratio)
 - ✅ Multi-source physiological noise for realistic FFT
