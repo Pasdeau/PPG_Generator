@@ -117,25 +117,44 @@ def main():
     
     print(f"Generating {args.num_samples} samples for V2 Segmentation...")
     
+    chunk_size = 1000
+    chunk_idx = 0
+    
+    current_signals = []
+    current_masks = []
+    current_labels = []
+    
     for i in tqdm(range(args.num_samples)):
         sig, mask, lbl = generate_segmentation_sample(i)
-        signals.append(sig)
-        masks.append(mask)
-        labels.append(lbl)
+        current_signals.append(sig)
+        current_masks.append(mask)
+        current_labels.append(lbl)
         
-        # Save periodically to avoid memory overflow if huge
-        if (i+1) % 5000 == 0:
-             pass # In a real large scale, we'd chunk save. 5000 fits in RAM.
-             
-    # Save as .npz
-    print("Saving to disk...")
-    np.savez_compressed(
-        os.path.join(args.output_dir, 'train_data.npz'),
-        signals=np.array(signals, dtype=np.float32)[:, np.newaxis, :],
-        masks=np.array(masks, dtype=np.uint8),
-        labels=np.array(labels, dtype=np.int64)
-    )
+        if len(current_signals) >= chunk_size:
+            print(f"Saving chunk {chunk_idx}...")
+            np.savez_compressed(
+                os.path.join(args.output_dir, f'train_data_chunk_{chunk_idx}.npz'),
+                signals=np.array(current_signals, dtype=np.float32)[:, np.newaxis, :],
+                masks=np.array(current_masks, dtype=np.uint8),
+                labels=np.array(current_labels, dtype=np.int64)
+            )
+            current_signals = []
+            current_masks = []
+            current_labels = []
+            chunk_idx += 1
+            
+    # Save remaining
+    if len(current_signals) > 0:
+        print(f"Saving final chunk {chunk_idx}...")
+        np.savez_compressed(
+            os.path.join(args.output_dir, f'train_data_chunk_{chunk_idx}.npz'),
+            signals=np.array(current_signals, dtype=np.float32)[:, np.newaxis, :],
+            masks=np.array(current_masks, dtype=np.uint8),
+            labels=np.array(current_labels, dtype=np.int64)
+        )
+            
     print("Done!")
+
 
 if __name__ == '__main__':
     main()

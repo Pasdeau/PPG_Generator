@@ -19,11 +19,32 @@ def train(args):
     print(f"Using device: {device}")
     
     # 1. Load Data
-    print("Loading data...")
-    data = np.load(args.data_path)
-    signals = torch.from_numpy(data['signals']).float()
-    masks = torch.from_numpy(data['masks']).long()
-    labels = torch.from_numpy(data['labels']).long()
+    import glob
+    if os.path.isfile(args.data_path):
+        print("Loading data from single file...")
+        data = np.load(args.data_path)
+        signals = torch.from_numpy(data['signals']).float()
+        masks = torch.from_numpy(data['masks']).long()
+        labels = torch.from_numpy(data['labels']).long()
+    else:
+        print("Loading data from chunks...")
+        files = sorted(glob.glob(os.path.join(args.data_path, 'train_data_chunk_*.npz')))
+        if not files:
+            raise ValueError(f"No train_data_chunk_*.npz files found in {args.data_path}")
+        
+        all_signals = []
+        all_masks = []
+        all_labels = []
+        for f in tqdm(files, desc="Loading chunks"):
+            d = np.load(f)
+            all_signals.append(d['signals'])
+            all_masks.append(d['masks'])
+            all_labels.append(d['labels'])
+            
+        signals = torch.from_numpy(np.concatenate(all_signals)).float()
+        masks = torch.from_numpy(np.concatenate(all_masks)).long()
+        labels = torch.from_numpy(np.concatenate(all_labels)).long()
+
     
     dataset = TensorDataset(signals, masks, labels)
     

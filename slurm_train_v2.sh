@@ -21,10 +21,10 @@ echo "=========================================="
 
 cd ~/ppg_project || exit 1
 
-DATASET_FILE=ml_dataset_v2/train_data.npz
+DATASET_FILE=ml_dataset_v2
 
-if [ ! -f "$DATASET_FILE" ]; then
-    echo "错误: 数据集文件 $DATASET_FILE 不存在"
+if [ ! -d "$DATASET_FILE" ]; then
+    echo "错误: 数据集目录 $DATASET_FILE 不存在"
     exit 1
 fi
 
