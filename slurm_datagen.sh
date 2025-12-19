@@ -27,20 +27,20 @@ cd ~/ppg_project || exit 1
 mkdir -p ~/ppg_training_data
 
 # 生成数据集
-echo -e "\n生成20,000样本数据集..."
-python3 batch_generate.py \
+echo -e "\n生成20,000样本数据集 (v2)..."
+python3 generate_training_data.py \
     --num_samples 20000 \
-    --output_dir ~/ppg_training_data
+    --output_dir ~/ppg_training_data_v2
 
 # 保存数据集路径
-DATASET_PATH=~/ppg_training_data
+DATASET_PATH=~/ppg_training_data_v2
 echo "$DATASET_PATH" > dataset_path.txt
 
 echo -e "\n=========================================="
 echo "数据生成完成！"
 echo "结束时间: $(date)"
 echo "数据集路径: $DATASET_PATH"
-echo "样本数量: $(ls $DATASET_PATH/*.npz 2>/dev/null | wc -l)"
+echo "样本数量: $(ls $DATASET_PATH/signals/*.npz 2>/dev/null | wc -l)"
 echo "=========================================="
 
 # 显示数据集统计

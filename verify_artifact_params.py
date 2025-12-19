@@ -1,37 +1,37 @@
 #!/usr/bin/env python3
 """
-验证伪影生成机制 - 简化版
+Validation of artifact generation mechanism - Simplified
 """
 
 import numpy as np
 
 print("=" * 70)
-print("伪影参数验证说明")
+print("Artifact Parameter Verification Guide")
 print("=" * 70)
 
-# 测试1: typ_artifact 参数
-print("\n【1】typ_artifact = np.array([1, 1, 1, 1])")
+# Test 1: typ_artifact parameter
+print("\n[1] typ_artifact = np.array([1, 1, 1, 1])")
 print("-" * 70)
 
 typ_artifact = np.array([1, 1, 1, 1])
 prob = typ_artifact / np.sum(typ_artifact)
-print(f"归一化概率: {prob}")
-print(f"  类型0 (device displacement): {prob[0]:.0%}")
-print(f"  类型1 (forearm motion):       {prob[1]:.0%}")
-print(f"  类型2 (hand motion):          {prob[2]:.0%}")
-print(f"  类型3 (poor contact):         {prob[3]:.0%}")
-print(f"\n✅ 结论: 4种伪影会随机出现，每种概率 {prob[0]:.0%}")
+print(f"Normalized probabilities: {prob}")
+print(f"  Type 0 (device displacement): {prob[0]:.0%}")
+print(f"  Type 1 (forearm motion):       {prob[1]:.0%}")
+print(f"  Type 2 (hand motion):          {prob[2]:.0%}")
+print(f"  Type 3 (poor contact):         {prob[3]:.0%}")
+print(f"\n[INFO] Conclusion: 4 artifact types appear randomly, each with probability {prob[0]:.0%}")
 
-# 测试2: 其他配置示例
-print("\n\n【2】其他 typ_artifact 配置示例")
+# Test 2: Other config examples
+print("\n\n[2] Other typ_artifact configuration examples")
 print("-" * 70)
 
 configs = [
-    ([1, 0, 0, 0], "只有类型0 (device displacement)"),
-    ([0, 1, 0, 0], "只有类型1 (forearm motion)"),
-    ([2, 1, 0, 0], "类型0出现概率2倍于类型1"),
-    ([1, 1, 1, 1], "所有类型均等"),
-    ([3, 2, 2, 1], "类型0最常见"),
+    ([1, 0, 0, 0], "Only Type 0 (device displacement)"),
+    ([0, 1, 0, 0], "Only Type 1 (forearm motion)"),
+    ([2, 1, 0, 0], "Type 0 is 2x more likely than Type 1"),
+    ([1, 1, 1, 1], "All types equal"),
+    ([3, 2, 2, 1], "Type 0 most common"),
 ]
 
 for typ, desc in configs:
@@ -40,38 +40,38 @@ for typ, desc in configs:
     Active_types = [i for i, p in enumerate(prob) if p > 0]
     print(f"\n{desc}:")
     print(f"  typ_artifact = {typ}")
-    print(f"  概率分布: {[f'{p:.0%}' for p in prob]}")
+    print(f"  Probability distribution: {[f'{p:.0%}' for p in prob]}")
 
-# 测试3: dur_mu0 和 dur_mu 参数
-print("\n\n【3】dur_mu0 和 dur_mu 参数说明")
+# Test 3: dur_mu0 and dur_mu parameters
+print("\n\n[3] dur_mu0 and dur_mu parameter explanation")
 print("-" * 70)
 
-print("\n参数含义:")
-print("  dur_mu0: 无伪影段的平均持续时间(秒)")
-print("  dur_mu:  有伪影段的平均持续时间(秒)")
+print("\nParameter meanings:")
+print("  dur_mu0: Mean duration of artifact-free intervals (seconds)")
+print("  dur_mu:  Mean duration of artifact intervals (seconds)")
 
-print("\n调整策略:")
-print("\n  轻度伪影 (信号大部分时间干净):")
+print("\nAdjustment strategies:")
+print("\n  Light artifacts (Clean mostly):")
 print("    dur_mu0 = 15, dur_mu = 2")
-print("    → 平均每15秒出现1次伪影，每次持续约2秒")
-print("    → 伪影占比: ~12%")
+print("    -> Artifacts appear approx every 15s, lasting ~2s")
+print("    -> Artifact ratio: ~12%")
 
-print("\n  中度伪影 (适度伪影):")
+print("\n  Medium artifacts (Moderate):")
 print("    dur_mu0 = 10, dur_mu = 5")
-print("    → 平均每10秒出现1次伪影，每次持续约5秒")
-print("    → 伪影占比: ~33%")
+print("    -> Artifacts appear approx every 10s, lasting ~5s")
+print("    -> Artifact ratio: ~33%")
 
-print("\n  严重伪影 (频繁出现):")
+print("\n  Heavy artifacts (Frequent):")
 print("    dur_mu0 = 5, dur_mu = 10")
-print("    → 平均每5秒出现1次伪影，每次持续约10秒")
-print("    → 伪影占比: ~67%")
+print("    -> Artifacts appear approx every 5s, lasting ~10s")
+print("    -> Artifact ratio: ~67%")
 
-print("\n  无伪影 (完全干净):")
+print("\n  No artifacts (Completely clean):")
 print("    add_artifacts = False")
-print("    → 不生成任何伪影")
+print("    -> Generates no artifacts")
 
-# 计算不同配置的伪影占比
-print("\n\n【4】伪影占比估算")
+# Test 4: Artifact ratio estimation
+print("\n\n[4] Artifact ratio estimation")
 print("-" * 70)
 
 configs = [
@@ -82,20 +82,20 @@ configs = [
     (5, 10),
 ]
 
-print(f"\n{'dur_mu0':>8} {'dur_mu':>7} {'伪影占比':>10}")
+print(f"\n{'dur_mu0':>8} {'dur_mu':>7} {'Ratio':>10}")
 print("-" * 30)
 for mu0, mu in configs:
     ratio = mu / (mu0 + mu)
     print(f"{mu0:>8} {mu:>7} {ratio:>9.0%}")
 
 print("\n" + "=" * 70)
-print("总结")
+print("Summary")
 print("=" * 70)
-print("\n当前配置: typ_artifact = [1,1,1,1], dur_mu0=10, dur_mu=5")
-print("\n效果:")
-print("  ✅ 4种伪影随机出现，概率均等(各25%)")
-print("  ✅ 平均每10秒出现伪影")
-print("  ✅ 每次伪影持续约5秒")
-print("  ✅ 伪影占总时长约33%")
-print("\n这是一个中等强度的伪影配置！")
+print("\nCurrent config: typ_artifact = [1,1,1,1], dur_mu0=10, dur_mu=5")
+print("\nEffect:")
+print("  [INFO] 4 artifact types appear randomly, equal probability (25% each)")
+print("  [INFO] Artifacts appear approx every 10 seconds")
+print("  [INFO] Each artifact lasts approx 5 seconds")
+print("  [INFO] Artifacts cover ~33% of total duration")
+print("\nThis is a medium intensity artifact configuration!")
 print("=" * 70)

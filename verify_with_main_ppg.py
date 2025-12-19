@@ -16,12 +16,12 @@ DATA_FILE = "output/python_ppg_test.npz"
 DEVICE = "cpu"
 
 # --- USER CONFIGURATION ---
-TEST_PULSE_TYPE = 1       # 1-5
-TEST_NUM_BEATS = 50       # Duration (approx 1 beat = 0.8s)
-TEST_ADD_ARTIFACTS = True # True/False
-TEST_ARTIFACT_TYPE = 1    # 1:Baseline 2:Motion(Forearm) 3:Motion(Hand) 4:HighFreq
-TEST_ARTIFACT_INT = 1.0   # Interval between artifacts (seconds)
-TEST_ARTIFACT_DUR = 3.0   # Duration of each artifact (seconds)
+TEST_PULSE_TYPE = 5         # 1-5
+TEST_NUM_BEATS = 80         # Duration (approx 1 beat = 0.8s)
+TEST_ADD_ARTIFACTS = True   # True/False
+TEST_ARTIFACT_TYPE = 2      # 1:Baseline 2:Motion(Forearm) 3:Motion(Hand) 4:HighFreq
+TEST_ARTIFACT_INT = 3.0     # Interval between artifacts (seconds)
+TEST_ARTIFACT_DUR = 1.0     # Duration of each artifact (seconds)
 # --------------------------
 
 def run_main_ppg():

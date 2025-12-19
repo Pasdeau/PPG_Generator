@@ -71,16 +71,17 @@ class UNetPPG(nn.Module):
     2. Decoder: Segmentation (Artifact Mask)
     3. Classification Head: Global Waveform Type
     """
-    def __init__(self, n_channels=1, n_classes_seg=5, n_classes_clf=5, bilinear=True):
+
+    def __init__(self, in_channels=2, n_classes_seg=5, n_classes_clf=5, bilinear=True):
         super(UNetPPG, self).__init__()
-        self.n_channels = n_channels
+        self.n_channels = in_channels
         self.n_classes_seg = n_classes_seg
         self.n_classes_clf = n_classes_clf
         self.bilinear = bilinear
 
         # Encoder (ResNet-style or Standard UNet Encoder)
         # Here we use standard UNet encoder for simplicity but with sufficient depth
-        self.inc = DoubleConv(n_channels, 64)
+        self.inc = DoubleConv(in_channels, 64)
         self.down1 = Down(64, 128)
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)

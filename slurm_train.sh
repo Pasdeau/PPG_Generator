@@ -36,7 +36,7 @@ if [ ! -d "$DATASET_PATH" ]; then
     exit 1
 fi
 
-SAMPLE_COUNT=$(ls $DATASET_PATH/*.npz 2>/dev/null | wc -l)
+SAMPLE_COUNT=$(ls $DATASET_PATH/signals/*.npz 2>/dev/null | wc -l)
 echo "数据集样本数: $SAMPLE_COUNT"
 
 # 显示GPU信息
@@ -45,20 +45,16 @@ nvidia-smi
 
 # 开始训练
 echo -e "\n=========================================="
-echo "开始训练 - ResNet1D模型"
+echo "开始训练 - UNet Segmentation + Classification"
 echo "=========================================="
 
-python3 train_high_accuracy.py \
-    --data_dir "$DATASET_PATH" \
-    --task waveform \
-    --model resnet \
-    --epochs 150 \
-    --batch_size 64 \
+python3 train_segmentation.py \
+    --data_path "$DATASET_PATH" \
+    --epochs 100 \
+    --batch_size 32 \
     --lr 0.001 \
-    --optimizer adamw \
-    --scheduler cosine \
-    --augment \
-    --save_dir checkpoints_resnet_waveform
+    --save_dir checkpoints_seg_v2 \
+    --log_dir runs_seg_v2
 
 # 训练完成
 echo -e "\n=========================================="
@@ -67,12 +63,12 @@ echo "结束时间: $(date)"
 echo "=========================================="
 
 # 显示最佳模型信息
-if [ -f checkpoints_resnet_waveform/best_model.pth ]; then
+if [ -f checkpoints_seg_v2/best_model.pth ]; then
     echo -e "\n最佳模型已保存:"
-    ls -lh checkpoints_resnet_waveform/best_model.pth
+    ls -lh checkpoints_seg_v2/best_model.pth
     
-    if [ -f checkpoints_resnet_waveform/config.json ]; then
-        echo -e "\n训练配置:"
-        cat checkpoints_resnet_waveform/config.json
+    if [ -f checkpoints_seg_v2/training_log.csv ]; then
+        echo -e "\n训练日志:"
+        head -5 checkpoints_seg_v2/training_log.csv
     fi
 fi

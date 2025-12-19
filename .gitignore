@@ -90,3 +90,8 @@ ppg_training_data/
 ml_dataset_v2/
 test_dataset/
 *.mat
+
+# v2.4 Release datasets
+test_release_dataset/
+dataset_v2/
+training_log_dump.txt

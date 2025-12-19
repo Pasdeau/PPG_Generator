@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PPG数据集加载器
-PyTorch Dataset和DataLoader
+PPG Dataset Loader
+PyTorch Dataset and DataLoader
 """
 
 import torch
@@ -14,12 +14,12 @@ from pathlib import Path
 
 class PPGDataset(Dataset):
     """
-    PPG信号数据集
+    PPG Signal Dataset
     
-    支持:
-    - 波形分类
-    - 伪影分类
-    - 心律分类
+    Supports:
+    - Waveform classification
+    - Artifact classification
+    - Rhythm classification
     """
     
     def __init__(self, data_dir, task='waveform', transform=None, max_length=None):
@@ -27,25 +27,26 @@ class PPGDataset(Dataset):
         Parameters:
         -----------
         data_dir : str
-            数据目录路径
+            Data directory path
         task : str
-            'waveform' - 波形分类 (5类)
-            'artifact' - 伪影分类 (5类)
-            'rhythm' - 心律分类 (2类)
+            'waveform' - Waveform classification (5 classes)
+            'artifact' - Artifact classification (5 classes)
+            'rhythm' - Rhythm classification (2 classes)
+            'multitask' - Returns signal, mask, and label
         transform : callable, optional
-            数据增强函数
+            Data augmentation function
         max_length : int, optional
-            信号最大长度（截断或填充）
+            Signal max length (truncation or padding)
         """
         self.data_dir = Path(data_dir)
         self.task = task
         self.transform = transform
         self.max_length = max_length
         
-        # 加载所有样本
+        # Load all samples
         self.samples = self._load_samples()
         
-        # 标签映射
+        # Label mapping
         self.label_maps = {
             'waveform': {1: 0, 2: 1, 3: 2, 4: 3, 5: 4},  # pulse_type 1-5 -> 0-4
             'artifact': {
@@ -59,27 +60,39 @@ class PPGDataset(Dataset):
         }
     
     def _load_samples(self):
-        """加载所有样本文件路径和元数据"""
+        """Load all sample file paths and metadata"""
         samples = []
         
-        # 查找所有.npz文件
+        # Find all .npz files
         npz_files = list(self.data_dir.glob('*.npz'))
         
         for npz_file in npz_files:
-            # 查找对应的元数据文件
+            # 1. Try finding metadata file in same directory (Legacy)
             meta_file = npz_file.with_name(npz_file.stem + '_meta.json')
+            
+            # 2. Try finding metadata in ../labels/ directory (New Structure)
+            if not meta_file.exists():
+                # Assuming structure is dataset/signals/*.npz and dataset/labels/*.json
+                meta_file = npz_file.parent.parent / 'labels' / (npz_file.stem + '.json')
             
             if meta_file.exists():
                 with open(meta_file, 'r') as f:
-                    metadata = json.load(f)
+                    full_meta = json.load(f)
+                    # Support both flat metadata and nested under 'metadata'/'labels'
+                    if 'metadata' in full_meta and 'labels' in full_meta:
+                        # Merge for convenience
+                        metadata = full_meta['metadata']
+                        metadata.update(full_meta['labels'])
+                    else:
+                        metadata = full_meta
                 
                 samples.append({
                     'npz_path': str(npz_file),
                     'metadata': metadata
                 })
             else:
-                # 如果没有元数据，从文件名解析
-                # 格式: sample_0000_p2_SR_poor_contact.npz
+                # If no metadata, parse from filename
+                # Format: sample_0000_p2_SR_poor_contact.npz
                 parts = npz_file.stem.split('_')
                 if len(parts) >= 5:
                     samples.append({
@@ -91,7 +104,7 @@ class PPGDataset(Dataset):
                         }
                     })
         
-        print(f"加载了 {len(samples)} 个样本")
+        print(f"Loaded {len(samples)} samples")
         return samples
     
     def __len__(self):
@@ -99,23 +112,30 @@ class PPGDataset(Dataset):
     
     def __getitem__(self, idx):
         """
-        获取单个样本
+        Get single sample
         
         Returns:
         --------
         signal : torch.Tensor
-            PPG信号 [1, signal_length]
+            PPG signal [1, signal_length]
         label : int
-            标签
+            Label
         """
         sample = self.samples[idx]
         
-        # 加载信号
+        # Load signal
         data = np.load(sample['npz_path'])
-        signal = data['PPG']  # 完整PPG信号（含伪影）
+        if 'PPG' in data:
+            signal = data['PPG']
+        elif 'signal' in data:
+            signal = data['signal']
+        else:
+             raise KeyError("No signal found in .npz (checked 'PPG' and 'signal')")
         
-        # 根据任务选择标签
+        # Select label based on task
         metadata = sample['metadata']
+        seg_mask = None
+        
         if self.task == 'waveform':
             label = self.label_maps['waveform'][metadata['pulse_type']]
         elif self.task == 'artifact':
@@ -123,30 +143,64 @@ class PPGDataset(Dataset):
             label = self.label_maps['artifact'].get(artifact_type, 0)
         elif self.task == 'rhythm':
             label = self.label_maps['rhythm'][metadata['rhythm']]
+        elif self.task == 'multitask':
+            label = self.label_maps['waveform'][metadata['pulse_type']]
+            if 'artifact_timeline' in metadata:
+                seg_mask = np.array(metadata['artifact_timeline'], dtype=int)
+            else:
+                 # Default to all zeros if missing (should not happen with new generator)
+                 seg_mask = np.zeros(len(signal), dtype=int)
         else:
             raise ValueError(f"Unknown task: {self.task}")
         
-        # 处理信号长度
+        # Handle signal length
         if self.max_length is not None:
             if len(signal) > self.max_length:
-                # 截断
+                # Truncate
                 signal = signal[:self.max_length]
+                if seg_mask is not None:
+                    seg_mask = seg_mask[:self.max_length]
             elif len(signal) < self.max_length:
-                # 填充
-                signal = np.pad(signal, (0, self.max_length - len(signal)), mode='constant')
+                # Pad
+                pad_len = self.max_length - len(signal)
+                signal = np.pad(signal, (0, pad_len), mode='constant')
+                if seg_mask is not None:
+                    seg_mask = np.pad(seg_mask, (0, pad_len), mode='constant', constant_values=0)
         
-        # 转换为tensor
-        signal = torch.FloatTensor(signal).unsqueeze(0)  # [1, length]
+        # Convert to tensor
+        # Calculate 1st derivative (Velocity)
+        derivative = np.diff(signal, prepend=signal[0])
+        # Normalize derivative independently
+        der_mean = np.mean(derivative)
+        der_std = np.std(derivative) + 1e-6
+        derivative = (derivative - der_mean) / der_std
+        
+        # Normalize raw signal again to be safe (or rely on generator)
+        # It is safer to normalize here to mean=0, std=1
+        sig_mean = np.mean(signal)
+        sig_std = np.std(signal) + 1e-6
+        signal = (signal - sig_mean) / sig_std
+        
+        # Stack channels: [2, length]
+        # Channel 0: Amplitude
+        # Channel 1: Velocity
+        combined_signal = np.stack([signal, derivative], axis=0) # [2, length]
+        
+        signal_tensor = torch.FloatTensor(combined_signal) # [2, length]
         label = torch.LongTensor([label])[0]
         
-        # 数据增强
+        # Data augmentation
         if self.transform:
-            signal = self.transform(signal)
+            signal_tensor = self.transform(signal_tensor)
         
-        return signal, label
+        if seg_mask is not None:
+             mask_tensor = torch.LongTensor(seg_mask)
+             return signal_tensor, mask_tensor, label
+        
+        return signal_tensor, label
     
     def get_class_distribution(self):
-        """获取类别分布"""
+        """Get class distribution"""
         from collections import Counter
         
         labels = []
@@ -163,41 +217,41 @@ class PPGDataset(Dataset):
 
 
 class DataAugmentation:
-    """数据增强"""
+    """Data Augmentation"""
     
     @staticmethod
     def add_noise(signal, noise_level=0.01):
-        """添加高斯噪声"""
+        """Add Gaussian noise"""
         noise = torch.randn_like(signal) * noise_level
         return signal + noise
     
     @staticmethod
     def time_shift(signal, shift_range=100):
-        """时间平移"""
+        """Time shift"""
         shift = np.random.randint(-shift_range, shift_range)
         return torch.roll(signal, shift, dims=-1)
     
     @staticmethod
     def amplitude_scale(signal, scale_range=(0.8, 1.2)):
-        """幅度缩放"""
+        """Amplitude scaling"""
         scale = np.random.uniform(*scale_range)
         return signal * scale
     
     @staticmethod
     def time_stretch(signal, stretch_range=(0.9, 1.1)):
-        """时间拉伸（简化版）"""
-        # 注意：这是简化实现，实际应用可能需要更复杂的插值
+        """Time stretch (Simplified)"""
+        # Note: This is simplified, real application might need more complex interpolation
         stretch = np.random.uniform(*stretch_range)
         if stretch == 1.0:
             return signal
         
-        # 简单的重采样
+        # Simple resampling
         length = signal.shape[-1]
         new_length = int(length * stretch)
         indices = torch.linspace(0, length-1, new_length).long()
         stretched = signal[..., indices]
         
-        # 填充或截断到原始长度
+        # Pad or truncate to original length
         if new_length < length:
             pad = length - new_length
             stretched = torch.nn.functional.pad(stretched, (0, pad))
@@ -208,11 +262,11 @@ class DataAugmentation:
 
 
 def create_augmentation_transform(augment_prob=0.5):
-    """创建数据增强变换"""
+    """Create data augmentation transform"""
     
     def transform(signal):
         if np.random.rand() < augment_prob:
-            # 随机选择增强方法
+            # Randomly select augmentation method
             aug_type = np.random.choice(['noise', 'shift', 'scale', 'stretch'])
             
             if aug_type == 'noise':
@@ -233,36 +287,36 @@ def create_dataloaders(data_dir, task='waveform', batch_size=32,
                        train_split=0.7, val_split=0.15, 
                        max_length=8000, num_workers=4, augment=True):
     """
-    创建训练、验证、测试数据加载器
+    Create train, validation, and test data loaders
     
     Parameters:
     -----------
     data_dir : str
-        数据目录
+        Data directory
     task : str
-        任务类型
+        Task type
     batch_size : int
-        批次大小
+        Batch size
     train_split : float
-        训练集比例
+        Train split ratio
     val_split : float
-        验证集比例
+        Validation split ratio
     max_length : int
-        信号最大长度
+        Signal max length
     num_workers : int
-        数据加载线程数
+        Number of workers
     augment : bool
-        是否使用数据增强
+        Whether to use augmentation
     
     Returns:
     --------
     train_loader, val_loader, test_loader
     """
     
-    # 创建完整数据集
+    # Create full dataset
     full_dataset = PPGDataset(data_dir, task=task, max_length=max_length)
     
-    # 划分数据集
+    # Split dataset
     dataset_size = len(full_dataset)
     train_size = int(train_split * dataset_size)
     val_size = int(val_split * dataset_size)
@@ -270,16 +324,16 @@ def create_dataloaders(data_dir, task='waveform', batch_size=32,
     
     train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
         full_dataset, [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(42)  # 固定随机种子
+        generator=torch.Generator().manual_seed(42)  # Fixed random seed
     )
     
-    # 为训练集添加数据增强
+    # Add augmentation to training set
     if augment:
-        # 注意：这里需要修改dataset的transform属性
-        # 实际应用中可能需要更复杂的处理
+        # Note: Need to modify transform attribute here
+        # Real application might need more complex handling
         pass
     
-    # 创建DataLoader
+    # Create DataLoaders
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -304,49 +358,49 @@ def create_dataloaders(data_dir, task='waveform', batch_size=32,
         pin_memory=True
     )
     
-    print(f"\n数据集划分:")
-    print(f"  训练集: {train_size} 样本")
-    print(f"  验证集: {val_size} 样本")
-    print(f"  测试集: {test_size} 样本")
+    print(f"\nDataset Split:")
+    print(f"  Train: {train_size} samples")
+    print(f"  Val:   {val_size} samples")
+    print(f"  Test:  {test_size} samples")
     
     return train_loader, val_loader, test_loader
 
 
 if __name__ == '__main__':
-    # 测试数据加载器
+    # Test data loader
     print("=" * 70)
-    print("PPG数据集加载器测试")
+    print("PPG Dataset Loader Test")
     print("=" * 70)
     
-    # 假设数据在batch_demo目录
+    # Assume data in batch_demo directory
     data_dir = '../batch_demo'
     
     if os.path.exists(data_dir):
-        # 测试数据集
+        # Test dataset
         dataset = PPGDataset(data_dir, task='waveform', max_length=8000)
         
-        print(f"\n数据集大小: {len(dataset)}")
-        print(f"\n类别分布: {dataset.get_class_distribution()}")
+        print(f"\nDataset size: {len(dataset)}")
+        print(f"\nClass Distribution: {dataset.get_class_distribution()}")
         
-        # 测试单个样本
+        # Test single sample
         signal, label = dataset[0]
-        print(f"\n样本形状: {signal.shape}")
-        print(f"标签: {label}")
+        print(f"\nSample shape: {signal.shape}")
+        print(f"Label: {label}")
         
-        # 测试DataLoader
+        # Test DataLoader
         train_loader, val_loader, test_loader = create_dataloaders(
             data_dir, task='waveform', batch_size=4
         )
         
-        # 测试一个batch
+        # Test one batch
         for signals, labels in train_loader:
-            print(f"\nBatch形状: {signals.shape}")
-            print(f"标签: {labels}")
+            print(f"\nBatch shape: {signals.shape}")
+            print(f"Labels: {labels}")
             break
         
-        print("\n✓ 数据加载器测试通过!")
+        print("\n[INFO] Data loader successfully tested!")
     else:
-        print(f"\n⚠️  数据目录不存在: {data_dir}")
-        print("请先运行 batch_generate.py 生成数据")
+        print(f"\n[WARN] Data directory not found: {data_dir}")
+        print("Please run generate_training_data.py first to generate data")
     
     print("=" * 70)
