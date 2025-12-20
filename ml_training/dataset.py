@@ -4,12 +4,61 @@ PPG Dataset Loader
 PyTorch Dataset and DataLoader
 """
 
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import os
 import json
 from pathlib import Path
+import scipy.signal # For CWT (Optional, keeping import for compatibility if needed, but likely unused)
+
+# Helper functions for CWT (Bypassing Scipy dependency)
+def ricker(points, a):
+    """
+    Ricker (Mexican Hat) Wavelet
+    A = 2 / (sqrt(3*a) * pi^0.25)
+    wsq = a^2
+    vec = t^2 / wsq
+    mod = (1 - vec) * exp(-vec/2)
+    """
+    A = 2 / (np.sqrt(3 * a) * (np.pi ** 0.25))
+    wsq = a ** 2
+    vec = torch.arange(0, points) - (points - 1.0) / 2
+    vec = vec ** 2 / wsq
+    mod = (1 - vec) * np.exp(-vec / 2)
+    return A * mod
+
+def cwt_ricker(signal, scales):
+    """
+    Continuous Wavelet Transform using Ricker wavelet
+    Output: [len(scales), len(signal)]
+    """
+    # Signal to tensor
+    if not isinstance(signal, torch.Tensor):
+        signal = torch.tensor(signal, dtype=torch.float32)
+        
+    cwt_matrix = torch.zeros((len(scales), len(signal)))
+    
+    for i, scale in enumerate(scales):
+        # Window size ~ 10 * scale
+        M = int(10 * scale)
+        if M % 2 == 0: M += 1
+        wavelet = ricker(M, scale)
+        
+        # Convolve (using Conv1d for speed if batched, but here simple convolution)
+        # We need padding to keep size same
+        # Conv1d expects [Batch, Channel, Length]
+        sig_reshaped = signal.view(1, 1, -1)
+        wav_reshaped = wavelet.view(1, 1, -1).float()
+        
+        # Flip wavelet for convolution (though Ricker is symmetric)
+        padding = M // 2
+        conv = torch.nn.functional.conv1d(sig_reshaped, wav_reshaped, padding=padding)
+        cwt_matrix[i, :] = conv[0, 0, :len(signal)]
+        
+    return cwt_matrix.numpy()
+
 
 
 class PPGDataset(Dataset):
@@ -63,8 +112,8 @@ class PPGDataset(Dataset):
         """Load all sample file paths and metadata"""
         samples = []
         
-        # Find all .npz files
-        npz_files = list(self.data_dir.glob('*.npz'))
+        # Find all .npz files (Recursively to handle signals/ subdirectory)
+        npz_files = list(self.data_dir.rglob('*.npz'))
         
         for npz_file in npz_files:
             # 1. Try finding metadata file in same directory (Legacy)
@@ -110,6 +159,8 @@ class PPGDataset(Dataset):
     def __len__(self):
         return len(self.samples)
     
+
+
     def __getitem__(self, idx):
         """
         Get single sample
@@ -168,23 +219,39 @@ class PPGDataset(Dataset):
                     seg_mask = np.pad(seg_mask, (0, pad_len), mode='constant', constant_values=0)
         
         # Convert to tensor
-        # Calculate 1st derivative (Velocity)
+        # 1. Calculate 1st derivative (Velocity)
         derivative = np.diff(signal, prepend=signal[0])
+        
+        # 2. Calculate CWT (Continuous Wavelet Transform)
+        # Scales 1 to 32 (Lower scales = High Freq, Higher scales = Low Freq)
+        scales = np.arange(1, 33) 
+        # cwtmatr = scipy.signal.cwt(signal, scipy.signal.ricker, scales) # [32, length] (REMOVED)
+        cwtmatr = cwt_ricker(signal, scales)
+        
         # Normalize derivative independently
         der_mean = np.mean(derivative)
         der_std = np.std(derivative) + 1e-6
         derivative = (derivative - der_mean) / der_std
         
-        # Normalize raw signal again to be safe (or rely on generator)
-        # It is safer to normalize here to mean=0, std=1
+        # Normalize CWT independently (Global normalization for the matrix)
+        cwt_mean = np.mean(cwtmatr)
+        cwt_std = np.std(cwtmatr) + 1e-6
+        cwtmatr = (cwtmatr - cwt_mean) / cwt_std
+        
+        # Normalize raw signal again to be safe
         sig_mean = np.mean(signal)
         sig_std = np.std(signal) + 1e-6
         signal = (signal - sig_mean) / sig_std
         
-        # Stack channels: [2, length]
+        # Stack channels: [34, length]
         # Channel 0: Amplitude
         # Channel 1: Velocity
-        combined_signal = np.stack([signal, derivative], axis=0) # [2, length]
+        # Channel 2-33: CWT (32 scales)
+        combined_signal = np.vstack([
+            signal[np.newaxis, :],     # [1, L]
+            derivative[np.newaxis, :], # [1, L]
+            cwtmatr                    # [32, L]
+        ]) # Total: [34, L]
         
         signal_tensor = torch.FloatTensor(combined_signal) # [2, length]
         label = torch.LongTensor([label])[0]

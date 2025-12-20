@@ -321,7 +321,7 @@ class ResNet1D_Classifier(nn.Module):
         return x
 
 
-def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels=2, **kwargs):
+def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels=34, **kwargs):
     """
     Model Factory Function
     
@@ -334,7 +334,7 @@ def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels
     num_classes : int
         Number of output classes
     in_channels : int
-        Number of input channels
+        Number of input channels (Default 34: Amp + Vel + 32 CWT scales)
     
     Returns:
     --------

@@ -2,48 +2,50 @@
 #SBATCH --job-name=ppg_datagen
 #SBATCH --output=logs/datagen_%j.out
 #SBATCH --error=logs/datagen_%j.err
-#SBATCH --time=02:00:00
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=wenzheng.wang@lip6.fr
 
-# PPG训练数据生成作业 - 修复版
-# 移除了不兼容的module load命令
+# PPG Training Data Generation Job - Fixed
+# Removed incompatible module load commands
 
 echo "=========================================="
-echo "PPG训练数据生成"
-echo "开始时间: $(date)"
+echo "PPG Training Data Generation"
+echo "Start Time: $(date)"
 echo "=========================================="
 
-# 显示Python版本
-echo "Python版本:"
+# Show Python version
+echo "Python Version:"
 python3 --version
 
-# 进入项目目录
-cd ~/ppg_project || exit 1
+# Running in current directory (where sbatch is submitted)
+echo "Running in: $(pwd)"
 
-# 创建输出目录
-mkdir -p ~/ppg_training_data
+# Create output directory
+mkdir -p ~/ppg_training_data_v3
 
-# 生成数据集
-echo -e "\n生成20,000样本数据集 (v2)..."
+# Run the Python script
+# Using the new Stratified Sampling generator (v2.4+)
+# Updated to v3.0 path
 python3 generate_training_data.py \
     --num_samples 20000 \
-    --output_dir ~/ppg_training_data_v2
+    --output_dir ~/ppg_training_data_v3 \
+    --fs 100 \
+    --time_len 8
 
-# 保存数据集路径
-DATASET_PATH=~/ppg_training_data_v2
-echo "$DATASET_PATH" > dataset_path.txt
+# Save dataset path for the training job
+echo "~/ppg_training_data_v3" > dataset_path.txt
 
 echo -e "\n=========================================="
-echo "数据生成完成！"
-echo "结束时间: $(date)"
-echo "数据集路径: $DATASET_PATH"
-echo "样本数量: $(ls $DATASET_PATH/signals/*.npz 2>/dev/null | wc -l)"
+echo "Data Generation Complete!"
+echo "End Time: $(date)"
+echo "Dataset Path: ~/ppg_training_data_v3"
+echo "Sample Count: $(ls ~/ppg_training_data_v3/signals/*.npz 2>/dev/null | wc -l)"
 echo "=========================================="
 
-# 显示数据集统计
-echo -e "\n数据集统计:"
+# Show dataset stats
+echo -e "\nDataset Statistics:"
 du -sh $DATASET_PATH
 ls -lh $DATASET_PATH | head -20

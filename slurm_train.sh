@@ -10,42 +10,48 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=wenzheng.wang@lip6.fr
 
-# PPG高精度分类训练作业
+# PPG High-Precision Training Job
 # GPU: A100 3g.40gb
 
 echo "=========================================="
-echo "PPG分类模型训练"
-echo "开始时间: $(date)"
+echo "PPG Classification Model Training"
+echo "Start Time: $(date)"
 echo "=========================================="
 
-# 进入项目目录
-cd ~/ppg_project || exit 1
+# Running in current directory
+echo "Running in: $(pwd)"
 
-# 读取数据集路径
+# Dataset Path
+# Try to read from file, otherwise default
 if [ -f dataset_path.txt ]; then
     DATASET_PATH=$(cat dataset_path.txt)
-    echo "数据集路径: $DATASET_PATH"
 else
-    DATASET_PATH=~/ppg_training_data
-    echo "使用默认数据集路径: $DATASET_PATH"
+    DATASET_PATH=~/ppg_training_data_v3
 fi
+echo "Dataset Path: $DATASET_PATH"
 
-# 检查数据集
+# Check Dataset
 if [ ! -d "$DATASET_PATH" ]; then
-    echo "错误: 数据集不存在: $DATASET_PATH"
-    exit 1
+    echo "Error: Dataset not found: $DATASET_PATH"
+    echo "Please check if data generation completed successfully."
+    # Potentially check for 'signals' subdir
+    if [ -d "$DATASET_PATH/signals" ]; then
+         echo "Found signals directory."
+    else
+         echo "Warning: signals directory missing?"
+    fi
 fi
 
 SAMPLE_COUNT=$(ls $DATASET_PATH/signals/*.npz 2>/dev/null | wc -l)
-echo "数据集样本数: $SAMPLE_COUNT"
+echo "Dataset Sample Count: $SAMPLE_COUNT"
 
-# 显示GPU信息
-echo -e "\nGPU信息:"
+# Show GPU Info
+echo -e "\nGPU Info:"
 nvidia-smi
 
-# 开始训练
+# Start Training
 echo -e "\n=========================================="
-echo "开始训练 - UNet Segmentation + Classification"
+echo "Starting Training - v3.0 CWT Frequency-Enhanced Model"
 echo "=========================================="
 
 python3 train_segmentation.py \
@@ -53,22 +59,22 @@ python3 train_segmentation.py \
     --epochs 100 \
     --batch_size 32 \
     --lr 0.001 \
-    --save_dir checkpoints_seg_v2 \
-    --log_dir runs_seg_v2
+    --save_dir checkpoints_cwt_v3 \
+    --log_dir runs_cwt_v3
 
-# 训练完成
+# Training Complete
 echo -e "\n=========================================="
-echo "训练完成！"
-echo "结束时间: $(date)"
+echo "Training Complete!"
+echo "End Time: $(date)"
 echo "=========================================="
 
-# 显示最佳模型信息
-if [ -f checkpoints_seg_v2/best_model.pth ]; then
-    echo -e "\n最佳模型已保存:"
-    ls -lh checkpoints_seg_v2/best_model.pth
+# Show Best Model Info
+if [ -f checkpoints_cwt_v3/best_model.pth ]; then
+    echo -e "\nBest Model Saved:"
+    ls -lh checkpoints_cwt_v3/best_model.pth
     
-    if [ -f checkpoints_seg_v2/training_log.csv ]; then
-        echo -e "\n训练日志:"
-        head -5 checkpoints_seg_v2/training_log.csv
+    if [ -f checkpoints_cwt_v3/training_log.csv ]; then
+        echo -e "\nTraining Log:"
+        head -5 checkpoints_cwt_v3/training_log.csv
     fi
 fi

@@ -11,7 +11,7 @@ sys.path.append(os.getcwd())
 from ml_training.model_factory import create_model
 
 # Constants
-MODEL_PATH = "local_best_model_v2.pth"
+MODEL_PATH = "checkpoints_seg_v2/best_model.pth" # Default output path for v2.4
 DATA_FILE = "output/python_ppg_test.npz"
 DEVICE = "cpu"
 
@@ -74,15 +74,31 @@ def verify_on_generated_data():
         sig_input = ppg_signal[:target_len]
         art_input = artifact_signal[:target_len]
         
-    # Standardize
-    sig_norm = (sig_input - np.mean(sig_input)) / (np.std(sig_input) + 1e-6)
-    tensor_in = torch.from_numpy(sig_norm).float().view(1, 1, -1)
+    # Standardize Channel 1: Amplitude
+    sig_amp = (sig_input - np.mean(sig_input)) / (np.std(sig_input) + 1e-6)
+    
+    # Generate Channel 2: Velocity (Gradient)
+    sig_vel = np.gradient(sig_input)
+    # Standardize Channel 2 independently
+    sig_vel = (sig_vel - np.mean(sig_vel)) / (np.std(sig_vel) + 1e-6)
+    
+    # Stack: [1, 2, 8000]
+    tensor_input = np.stack([sig_amp, sig_vel], axis=0)
+    tensor_in = torch.from_numpy(tensor_input).float().unsqueeze(0) # Add batch dim
     
     # 4. Load Model
-    print("[-] Loading V2.0 Model...")
-    model = create_model('unet', input_length=8000, n_classes_seg=5, n_classes_clf=5)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-    model.eval()
+    print("[-] Loading V2.4 Model (Dual-Channel)...")
+    try:
+        model = create_model('unet', input_length=8000, n_classes_seg=5, n_classes_clf=5, in_channels=2)
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+        model.eval()
+    except FileNotFoundError:
+        print(f"[ERROR] Model file not found at {MODEL_PATH}")
+        print("Please wait for training to complete and download the checkpoint.")
+        return
+    except Exception as e:
+        print(f"[ERROR] Failed to load model: {e}")
+        return
     
     # 5. Inference
     print("[-] Running Inference...")
@@ -104,7 +120,8 @@ def verify_on_generated_data():
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
     
     # Plot 1: Signal + Model Detection
-    ax1.plot(sig_input, 'k-', linewidth=0.8, label='PPG (from main_ppg)')
+    ax1.plot(sig_input, 'k-', linewidth=0.8, label='PPG (Amplitude)')
+    # Optional: Plot gradient in background? Maybe too messy.
     
     # Overlay Prediction (Red)
     mask_indices = np.where(pred_mask > 0)[0]
@@ -140,17 +157,17 @@ def verify_on_generated_data():
     ax2.set_xlabel("Samples")
     
     plt.tight_layout()
-    os.makedirs("validation", exist_ok=True)
+    os.makedirs("validation_v2_4", exist_ok=True)
     if TEST_ADD_ARTIFACTS:
-        out_path = f"validation/verify_Pulse_Type{TEST_PULSE_TYPE}_Noise_Type{TEST_ARTIFACT_TYPE}.png"
+        out_path = f"validation_v2_4/verify_Pulse_Type{TEST_PULSE_TYPE}_Noise_Type{TEST_ARTIFACT_TYPE}.png"
     else:
-        out_path = f"validation/verify_Pulse_Type{TEST_PULSE_TYPE}_Clean.png"
+        out_path = f"validation_v2_4/verify_Pulse_Type{TEST_PULSE_TYPE}_Clean.png"
     plt.savefig(out_path, dpi=150)
     print(f"[+] Result saved to {out_path}")
     
     # Explicit Report for User
     print("\n" + "="*40)
-    print("     MODEL DIAGNOSIS REPORT")
+    print("     MODEL DIAGNOSIS REPORT (v2.4)")
     print("="*40)
     print(f"DETECTED WAVEFORM: Type {classes[pred_class]}")
     print(f"CONFIDENCE:        {clf_probs[pred_class]:.1%}")
