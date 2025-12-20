@@ -202,6 +202,19 @@ Use the included SLURM scripts (`slurm_datagen.sh`, `slurm_train.sh`) for cluste
 
 ## 🔄 Version History
 
+### v3.0: Frequency-Enhanced Model ("The Compound Eye")
+*   **Feature**: Integrated Continuous Wavelet Transform (CWT) into the input pipeline.
+*   **Architecture**: Input tensor shape increased from `[2, 8000]` to `[34, 8000]`.
+    *   Channel 0: Amplitude (Normalized)
+    *   Channel 1: Velocity (1st Derivative)
+    *   Channels 2-33: CWT Coefficients (32 Scales, Ricker Wavelet)
+*   **Robustness**: Using custom-implemented Ricker wavelet to remove dependency on `scipy.signal` (fixing remote deployment issues).
+*   **Goal**: Significantly improve noise segmentation accuracy by leveraging time-frequency domain features.
+
+### v2.5: Remote Execution Fixes
+*   **Refactor**: Cleaned up `ml_training` package structure to fix `ModuleNotFoundError` on remote Linux environments.
+*   **Config**: Updated SLURM scripts (`slurm_datagen.sh`, `slurm_train.sh`) to use explicit paths and robust error handling.
+
 ### v2.4 (2025-12-19): Full English Translation & Stratified Sampling
 - ✅ **Internationalization**: Translated all code comments to English and removed emojis for cleaner codebase.
 - ✅ **Stratified Sampling**: `generate_training_data.py` now guarantees balanced representation of 25 Data Modes (5 Pulses x 5 Noise Conditions).
