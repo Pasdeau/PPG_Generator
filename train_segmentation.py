@@ -38,10 +38,10 @@ def train(args):
     print("Creating UNet...")
     # n_classes_seg = 5 (Clean + 4 Artifacts)
     # n_classes_clf = 5 (Pulse Types)
-    # in_channels = 2 (Amp + Vel)
+    # in_channels = 34 (Amp + Vel + 32 CWT)
     model = create_model('unet', input_length=8000, 
                         n_classes_seg=5, n_classes_clf=5, 
-                        in_channels=2).to(device)
+                        in_channels=34).to(device)
     
     # 3. Optimization
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
