@@ -3,8 +3,8 @@
 #SBATCH --output=logs/train_v3.1_%j.out
 #SBATCH --error=logs/train_v3.1_%j.err
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=4
+#SBATCH --gres=gpu:a100_3g.40gb:1
+#SBATCH --partition=convergence
 #SBATCH --mem=32G
 #SBATCH --partition=convergence
 
