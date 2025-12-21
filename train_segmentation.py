@@ -41,7 +41,7 @@ def train(args):
     # in_channels = 34 (Amp + Vel + 32 CWT)
     model = create_model('unet', input_length=8000, 
                         n_classes_seg=5, n_classes_clf=5, 
-                        in_channels=34).to(device)
+                        in_channels=34, attention=args.attention).to(device)
     
     # 3. Optimization
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
@@ -164,6 +164,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_dir', type=str, default='runs_seg')
     parser.add_argument('--lambda_clf', type=float, default=1.0, help='Weight for classification loss')
     parser.add_argument('--lambda_seg', type=float, default=1.0, help='Weight for segmentation loss')
+    parser.add_argument('--attention', action='store_true', help='Enable SE-Block Attention')
     
     args = parser.parse_args()
     train(args)
