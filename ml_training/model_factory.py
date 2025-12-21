@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ml_training.models.unet_ppg import UNetPPG
+from ml_training.models.resnet1d import ResNet1D_Classifier, ResNet1D_Block
+from ml_training.models.dual_ppg import DualTaskPPG
 
 class CNN1D_Classifier(nn.Module):
     """
@@ -241,86 +243,6 @@ class CNN_LSTM_Classifier(nn.Module):
         return x
 
 
-class ResNet1D_Block(nn.Module):
-    """1D ResNet Residual Block"""
-    
-    def __init__(self, in_channels, out_channels, kernel_size=7, stride=1):
-        super(ResNet1D_Block, self).__init__()
-        
-        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size, 
-                              stride=stride, padding=kernel_size//2)
-        self.bn1 = nn.BatchNorm1d(out_channels)
-        
-        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size,
-                              stride=1, padding=kernel_size//2)
-        self.bn2 = nn.BatchNorm1d(out_channels)
-        
-        # Shortcut connection
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride),
-                nn.BatchNorm1d(out_channels)
-            )
-    
-    def forward(self, x):
-        residual = x
-        
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        
-        out += self.shortcut(residual)
-        out = F.relu(out)
-        
-        return out
-
-
-class ResNet1D_Classifier(nn.Module):
-    """
-    ResNet1D Classifier - Deep network
-    
-    Suitable for large-scale datasets.
-    """
-    
-    def __init__(self, input_length=8000, num_classes=5, dropout=0.5, in_channels=2):
-        super(ResNet1D_Classifier, self).__init__()
-        
-        self.conv1 = nn.Conv1d(in_channels, 64, kernel_size=15, stride=2, padding=7)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.pool1 = nn.MaxPool1d(3, stride=2, padding=1)
-        
-        # Residual Blocks
-        self.layer1 = self._make_layer(64, 64, 2)
-        self.layer2 = self._make_layer(64, 128, 2, stride=2)
-        self.layer3 = self._make_layer(128, 256, 2, stride=2)
-        
-        self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.dropout = nn.Dropout(dropout)  # Add dropout
-        self.fc = nn.Linear(256, num_classes)
-    
-    def _make_layer(self, in_channels, out_channels, num_blocks, stride=1):
-        layers = []
-        layers.append(ResNet1D_Block(in_channels, out_channels, stride=stride))
-        for _ in range(1, num_blocks):
-            layers.append(ResNet1D_Block(out_channels, out_channels))
-        return nn.Sequential(*layers)
-    
-    def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = self.pool1(x)
-        
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.dropout(x)  # Apply dropout
-        x = self.fc(x)
-        
-        return x
-
-
 def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels=34, **kwargs):
     """
     Model Factory Function
@@ -328,7 +250,7 @@ def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels
     Parameters:
     -----------
     model_type : str
-        'cnn', 'lstm', 'cnn_lstm', 'resnet', 'unet'
+        'cnn', 'lstm', 'cnn_lstm', 'resnet', 'unet', 'dual'
     input_length : int
         Input signal length
     num_classes : int
@@ -341,27 +263,31 @@ def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels
     nn.Module
         PyTorch Model
     
-    UNet-specific kwargs:
+    UNet/Dual-specific kwargs:
     ---------------------
     n_classes_seg : int (default: 5)
     n_classes_clf : int (default: 5)
     bilinear : bool (default: True)
-    attention : bool (default: False) -> Enables v3.1 SE-Block
+    attention : bool (default: False) -> Enables SE-Block
     """
     models = {
         'cnn': CNN1D_Classifier,
         'lstm': LSTM_Classifier,
         'cnn_lstm': CNN_LSTM_Classifier,
         'resnet': ResNet1D_Classifier,
-        'unet': UNetPPG
+        'unet': UNetPPG,
+        'dual': DualTaskPPG
     }
     
     if model_type not in models:
         raise ValueError(f"Unknown model type: {model_type}. Choose from {list(models.keys())}")
     
-    # UNetPPG signature is different (kwargs handles extra args)
+    # UNetPPG / DualTaskPPG signature is different (kwargs handles extra args)
     if model_type == 'unet':
        return UNetPPG(in_channels=in_channels, **kwargs)
+       
+    if model_type == 'dual':
+        return DualTaskPPG(in_channels=in_channels, **kwargs)
        
     model = models[model_type](input_length=input_length, num_classes=num_classes, in_channels=in_channels, **kwargs)
     return model
@@ -382,11 +308,18 @@ if __name__ == '__main__':
     # Create test input
     x = torch.randn(batch_size, in_channels, signal_length)
     
-    models_to_test = ['cnn', 'lstm', 'cnn_lstm', 'resnet']
+    models_to_test = ['cnn', 'lstm', 'cnn_lstm', 'resnet', 'dual']
     
     for model_type in models_to_test:
         print(f"\nTesting {model_type.upper()} model:")
-        model = create_model(model_type, signal_length, num_classes, in_channels=in_channels)
+        
+        # Dual model needs 34 channels, others need 2
+        curr_in_channels = 34 if model_type in ['unet', 'dual'] else 2
+        
+        model = create_model(model_type, signal_length, num_classes, in_channels=curr_in_channels)
+        
+        # Test input
+        x = torch.randn(batch_size, curr_in_channels, signal_length)
         
         # Forward pass
         output = model(x)
@@ -395,7 +328,10 @@ if __name__ == '__main__':
         num_params = sum(p.numel() for p in model.parameters())
         
         print(f"  Input shape: {x.shape}")
-        print(f"  Output shape: {output.shape}")
+        if isinstance(output, tuple):
+            print(f"  Output shapes: {[o.shape for o in output]}")
+        else:
+            print(f"  Output shape: {output.shape}")
         print(f"  Parameters: {num_params:,}")
         print(f"  [INFO] Test passed")
     
