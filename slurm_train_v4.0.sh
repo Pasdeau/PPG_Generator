@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=ppg_v4.0_dual
-#SBATCH --output=/home/users/wang/logs/train_v4.0_%j.out
-#SBATCH --error=/home/users/wang/logs/train_v4.0_%j.err
+#SBATCH --output=/home/wenwang/logs/train_v4.0_%j.out
+#SBATCH --error=/home/wenwang/logs/train_v4.0_%j.err
 #SBATCH --time=4:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
