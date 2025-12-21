@@ -74,6 +74,20 @@ This generates:
 
 ---
 
+## Directory Structure
+
+### Active Files (Root)
+*   **v3.0 Generation**: `generate_training_data.py`, `slurm_datagen.sh`
+*   **v3.0 Training**: `train_segmentation.py`, `slurm_train.sh`
+*   **v3.0 Verification**: `verify_with_main_ppg.py`, `verify_cwt_input.py`
+*   **v3.1 Development**: `verify_model_v3_1.py`
+*   **Core Generator**: `ppg_generator.py`, `ppg_pulse.py`, `ppg_artifacts.py`
+
+### Archive
+*   `archive/v1_legacy`: Old batch generation scripts and v1.0 notes.
+*   `archive/v2_legacy`: v2.4 training scripts (`train_balanced.py`, etc.) and v2 models.
+*   `archive/old_scripts`: Legacy SLURM scripts.
+
 ## 🎨 New Features (v1.1+)
 
 ### FFT Peak Visualization

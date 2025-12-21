@@ -23,7 +23,7 @@ def train(args):
     print(f"Loading data from {args.data_path}...")
     # New generator structure: signals are in data_path/signals
     # If users pass the root 'dataset_v2', append '/signals'
-    data_dir = args.data_path
+    data_dir = os.path.expanduser(args.data_path)
     if os.path.exists(os.path.join(data_dir, 'signals')):
         data_dir = os.path.join(data_dir, 'signals')
         

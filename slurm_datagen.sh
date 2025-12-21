@@ -32,8 +32,7 @@ mkdir -p ~/ppg_training_data_v3
 python3 generate_training_data.py \
     --num_samples 20000 \
     --output_dir ~/ppg_training_data_v3 \
-    --fs 100 \
-    --time_len 8
+    --Fd 1000
 
 # Save dataset path for the training job
 echo "~/ppg_training_data_v3" > dataset_path.txt

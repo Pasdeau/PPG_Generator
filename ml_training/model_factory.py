@@ -340,6 +340,13 @@ def create_model(model_type='cnn', input_length=8000, num_classes=5, in_channels
     --------
     nn.Module
         PyTorch Model
+    
+    UNet-specific kwargs:
+    ---------------------
+    n_classes_seg : int (default: 5)
+    n_classes_clf : int (default: 5)
+    bilinear : bool (default: True)
+    attention : bool (default: False) -> Enables v3.1 SE-Block
     """
     models = {
         'cnn': CNN1D_Classifier,
