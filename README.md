@@ -66,6 +66,18 @@ PPG, peak_indices, peak_values = gen_PPG(RR, pulse_type=1, Fd=1000)
 python main_ppg.py
 ```
 
+### Manual Verification (v3.0)
+You can generate verification plots with specific pulse and noise types:
+```bash
+# Example: Pulse Type 3 (Ventricular) + Noise Type 2 (Forearm Motion)
+python verify_with_main_ppg.py --pulse_type 3 --artifact_type 2
+```
+Output saved to: `validation_v3/verify_Pulse_Type3_Noise_Type2.png`
+
+Values:
+- `pulse_type`: 1=Sinus, 2=Premature, 3=Ventricular, 4=Fusion, 5=Unknown
+- `artifact_type`: 1=Baseline, 2=Forearm, 3=Hand, 4=HighFreq
+
 This generates:
 - `output/python_ppg_test_PPG.png` - PPG waveform visualization
 - `output/python_ppg_test_RR.png` - RR interval plot

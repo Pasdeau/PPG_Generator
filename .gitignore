@@ -95,3 +95,20 @@ test_dataset/
 test_release_dataset/
 dataset_v2/
 training_log_dump.txt
+
+# v3.x Training outputs
+checkpoints_cwt_v3/
+checkpoints_cwt_v3_1/
+runs_cwt_v3/
+runs_v3_1/
+training_log_v3.1.txt
+validation_v3/
+validation_v3_1/
+validation_debug/
+validation_batch/
+
+# Paper (not pushed to GitHub)
+paper/
+
+# Debug files
+debug_*.txt
