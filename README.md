@@ -100,6 +100,26 @@ This generates:
 *   `archive/v2_legacy`: v2.4 training scripts (`train_balanced.py`, etc.) and v2 models.
 *   `archive/old_scripts`: Legacy SLURM scripts.
 
+## 🧠 Model Versions
+
+### v2.4: Time-Domain Classification (ResNet1D)
+- **Input**: 2-channel (Amplitude + Velocity)
+- **Task**: Waveform type classification (N, S, V, F, Q)
+- **Result**: High classification accuracy (~97%)
+
+### v3.0/v3.1: Time-Frequency Segmentation (CWT-UNet)
+- **Input**: 34-channel (Amp + Vel + 32-scale CWT)
+- **Tasks**: Multi-task (Classification + Artifact Segmentation)
+- **Result**: Excellent segmentation, but classification regressed
+
+### v4.0: Dual-Stream Architecture ⭐ NEW
+- **Architecture**: Two parallel networks in one model
+  - **Branch A (ResNet1D)**: Classification from time-domain features
+  - **Branch B (CWT-UNet)**: Segmentation from time-frequency features
+- **Training**: `train_dual_stream.py`
+- **Slurm**: `slurm_train_v4.0.sh`
+- **Goal**: Best of both worlds—v2.4's classification + v3.1's segmentation
+
 ## 🎨 New Features (v1.1+)
 
 ### FFT Peak Visualization
