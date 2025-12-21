@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:a100_3g.40gb:1
-#SBATCH --partition=NGA100
+#SBATCH --partition=convergence
 #SBATCH --mem=32G
 
 # Environments
