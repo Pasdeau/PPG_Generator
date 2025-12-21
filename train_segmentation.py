@@ -83,13 +83,14 @@ def train(args):
             
             optimizer.zero_grad()
             pred_clf, pred_seg = model(batch_sig)
-            
+
+
             # Loss Calculation
             loss_clf = criterion_clf(pred_clf, batch_lbl)
             loss_seg = criterion_seg(pred_seg, batch_mask)
             
-            # Mixed Loss (Lambda weights)
-            loss = loss_clf + (loss_seg * 10.0) # Segmentation is harder per-pixel
+            # Mixed Loss (Weighted)
+            loss = (loss_clf * args.lambda_clf) + (loss_seg * args.lambda_seg)
             
             loss.backward()
             optimizer.step()
@@ -120,7 +121,7 @@ def train(args):
                 
                 loss_clf = criterion_clf(pred_clf, batch_lbl)
                 loss_seg = criterion_seg(pred_seg, batch_mask)
-                loss = loss_clf + (loss_seg * 10.0)
+                loss = (loss_clf * args.lambda_clf) + (loss_seg * args.lambda_seg)
                 
                 val_loss += loss.item()
                 val_acc_clf += (pred_clf.argmax(1) == batch_lbl).float().mean().item()
@@ -161,6 +162,8 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--save_dir', type=str, default='checkpoints_seg')
     parser.add_argument('--log_dir', type=str, default='runs_seg')
+    parser.add_argument('--lambda_clf', type=float, default=1.0, help='Weight for classification loss')
+    parser.add_argument('--lambda_seg', type=float, default=1.0, help='Weight for segmentation loss')
     
     args = parser.parse_args()
     train(args)
