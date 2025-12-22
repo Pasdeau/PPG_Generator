@@ -261,7 +261,7 @@ def verify_batch(model_path, output_dir, device='cpu'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='v4.0 Dual-Stream Verification')
-    parser.add_argument('model_path', type=str, help='Path to best_model.pth')
+    parser.add_argument('model_path', type=str, nargs='?', default='output/v4_best_model.pth', help='Path to best_model.pth')
     parser.add_argument('--output_dir', type=str, default='validation_v4', help='Output directory')
     parser.add_argument('--device', type=str, default='cpu', help='Device (cpu/cuda)')
     
