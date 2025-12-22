@@ -114,4 +114,7 @@ paper/
 post/
 
 # Debug files
-debug_*.txt
+
+# ADS1298 Receiver (Local Only)
+ads1298_serial.py
+ADS1298_Receiver_v4/
