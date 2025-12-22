@@ -110,5 +110,8 @@ validation_batch/
 # Paper (not pushed to GitHub)
 paper/
 
+# Blog Posts (Local Only)
+post/
+
 # Debug files
 debug_*.txt

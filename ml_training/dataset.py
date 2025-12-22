@@ -60,6 +60,43 @@ def cwt_ricker(signal, scales):
     return cwt_matrix.numpy()
 
 
+def preprocess_signal(signal):
+    """
+    Standard preprocessing pipeline
+    Input: raw signal (numpy array)
+    Output: tensor [34, Length]
+    """
+    # 1. Calculate 1st derivative (Velocity)
+    derivative = np.diff(signal, prepend=signal[0])
+    
+    # 2. Calculate CWT (Continuous Wavelet Transform)
+    scales = np.arange(1, 33) 
+    cwtmatr = cwt_ricker(signal, scales)
+    
+    # Normalize derivative independently
+    der_mean = np.mean(derivative)
+    der_std = np.std(derivative) + 1e-6
+    derivative = (derivative - der_mean) / der_std
+    
+    # Normalize CWT independently
+    cwt_mean = np.mean(cwtmatr)
+    cwt_std = np.std(cwtmatr) + 1e-6
+    cwtmatr = (cwtmatr - cwt_mean) / cwt_std
+    
+    # Normalize raw signal
+    sig_mean = np.mean(signal)
+    sig_std = np.std(signal) + 1e-6
+    signal = (signal - sig_mean) / sig_std
+    
+    # Stack channels
+    combined_signal = np.vstack([
+        signal[np.newaxis, :],     # [1, L]
+        derivative[np.newaxis, :], # [1, L]
+        cwtmatr                    # [32, L]
+    ])
+    
+    return torch.FloatTensor(combined_signal)
+
 
 class PPGDataset(Dataset):
     """

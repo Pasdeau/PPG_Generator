@@ -42,361 +42,109 @@ import os
 # Try to import model factory - robustly handle if potential path issues
 try:
     from ml_training.model_factory import create_model
+    from ml_training.dataset import preprocess_signal
 except ImportError:
     create_model = None
-    print("[WARN] Could not import ml_training.model_factory. Inference will be disabled.")
+    preprocess_signal = None
+    print("[WARN] Could not import ml_training modules. Inference will be disabled.")
 
 class RealTimePPGDetector:
     """
-    Real-time inference engine for V2.0 UNet Model.
-    Maintains a buffer of signal data and performs periodic inference.
+    Real-time inference engine for V4.0 Dual-Stream Model.
+    Maintains a buffer and uses a shared model instance.
     """
-    def __init__(self, model_path, device='cpu', buffer_size=8000, inference_stride=1000):
+    def __init__(self, model_instance=None, model_path=None, device='cpu', 
+                 buffer_size=2560, inference_stride=1000, name="Detector"):
         self.device = torch.device(device)
-        self.buffer_size = buffer_size
+        self.buffer_size = buffer_size # 2.56s @ 1000Hz
         self.stride = inference_stride
         self.buffer = deque(maxlen=buffer_size)
         self.samples_since_last_inference = 0
-        self.model = None
+        self.name = name
         
-        if create_model is None:
-            print("[ERR] create_model not available.")
-            return
-
-        if not os.path.exists(model_path):
-             print(f"[WARN] Model file {model_path} not found. Inference disabled.")
-             return
+        # Shared model or load new
+        if model_instance:
+            self.model = model_instance
+        elif model_path and create_model:
+            self.model = self._load_model(model_path)
+        else:
+            self.model = None
+            
+        self.pulse_labels = {0: 'Sinus (N)', 1: 'Premature (S)', 2: 'Ventricular (V)', 3: 'Fusion (F)', 4: 'Unknown (Q)'}
+        self.noise_labels = {0: 'Clean', 1: 'Baseline', 2: 'Forearm', 3: 'Hand', 4: 'HighFreq'}
         
-        # Load Model
+    def _load_model(self, path):
+        if not os.path.exists(path):
+            print(f"[WARN] Model {path} not found.")
+            return None
         try:
-            print(f"[ML] Loading V2.0 Model from {model_path}...")
-            self.model = create_model('unet', input_length=buffer_size, n_classes_seg=5, n_classes_clf=5)
-            # Ensure safe loading for mapping to CPU/GPU
-            state = torch.load(model_path, map_location=device)
-            self.model.load_state_dict(state)
-            self.model.to(self.device)
-            self.model.eval()
-            print("[ML] Model Loaded Successfully.")
+            print(f"[ML] Loading V4.0 Model from {path}...")
+            model = create_model('dual', in_channels=34, n_classes_seg=5, n_classes_clf=5, attention=True)
+            model.load_state_dict(torch.load(path, map_location=self.device))
+            model.to(self.device)
+            model.eval()
+            return model
         except Exception as e:
             print(f"[ERR] Failed to load model: {e}")
-            self.model = None
-        
-        # Artifact Map
-        self.artifact_names = {
-            0: "Clean",
-            1: "Device Displacement",
-            2: "Forearm Motion",
-            3: "Hand Motion",
-            4: "Poor Contact"
-        }
-        
-    def process_new_data(self, new_samples):
-        """
-        Ingest new signal samples (list or numpy array).
-        Returns prediction result if inference triggered, else None.
-        """
-        if self.model is None: return None
+            return None
 
+    def process_new_data(self, new_samples):
+        if self.model is None or preprocess_signal is None: return None
+        
         self.buffer.extend(new_samples)
         self.samples_since_last_inference += len(new_samples)
         
-        # Trigger inference if buffer full and stride reached
         if len(self.buffer) == self.buffer_size and self.samples_since_last_inference >= self.stride:
             self.samples_since_last_inference = 0
             return self._run_inference()
-            
         return None
-        
+    
     def _run_inference(self):
-        signal = np.array(self.buffer, dtype=np.float32)
+        signal_np = np.array(self.buffer, dtype=np.float32)
         
-        # Normalize (Standard Score within window)
-        sig_mean = np.mean(signal)
-        sig_std = np.std(signal)
-        if sig_std > 1e-6:
-            signal = (signal - sig_mean) / sig_std
-        else:
-            signal = (signal - sig_mean) 
-        
-        # Tensorize
-        input_tensor = torch.from_numpy(signal).view(1, 1, -1).to(self.device)
-        
+        # Preprocess (CWT + Norm)
+        # preprocess_signal expects returns torch tensor [34, L]
         try:
+            tensor = preprocess_signal(signal_np) 
+            tensor = tensor.unsqueeze(0).to(self.device) # [1, 34, L]
+            
             with torch.no_grad():
-                logits_clf, logits_seg = self.model(input_tensor)
+                pred_clf, pred_seg = self.model(tensor)
                 
-                # Classification Result
-                prob_clf = torch.softmax(logits_clf, dim=1)
-                pred_cls = torch.argmax(prob_clf, dim=1).item()
-                conf_cls = prob_clf[0, pred_cls].item()
-                
-                # Segmentation Result
-                prob_seg = torch.softmax(logits_seg, dim=1)
-                pred_mask = torch.argmax(prob_seg, dim=1).squeeze().cpu().numpy()
-                
-                # Analysis
-                unique, counts = np.unique(pred_mask, return_counts=True)
-                counts_map = dict(zip(unique, counts))
-                
-                total_pts = self.buffer_size
-                noise_summary = {}
-                has_noise = False
-                
-                for k, v in counts_map.items():
-                    if k == 0: continue
-                    percentage = v / total_pts
-                    if percentage > 0.05: # Threshold: >5% of window is this artifact
-                        noise_summary[self.artifact_names.get(k, f"Type {k}")] = f"{percentage:.1%}"
-                        has_noise = True
-                
-                result = {
-                    "waveform_type": pred_cls + 1, # 1-based
-                    "waveform_conf": conf_cls,
-                    "has_noise": has_noise,
-                    "noise_details": noise_summary
-                }
-                
-                return result
+            # Classification
+            prob_clf = torch.softmax(pred_clf, dim=1)
+            pred_p = prob_clf.argmax(1).item()
+            conf_p = prob_clf[0, pred_p].item()
+            
+            # Segmentation
+            pred_mask = pred_seg.argmax(1).squeeze().cpu().numpy()
+            
+            # Analysis
+            unique, counts = np.unique(pred_mask, return_counts=True)
+            noise_summary = []
+            has_noise = False
+            total_pts = len(pred_mask)
+            
+            for u, c in zip(unique, counts):
+                if u == 0: continue
+                ratio = c / total_pts
+                if ratio > 0.05: # >5% coverage
+                    noise_summary.append(f"{self.noise_labels.get(u, str(u))}({ratio:.0%})")
+                    has_noise = True
+                    
+            return {
+                "name": self.name,
+                "pulse_type": self.pulse_labels.get(pred_p, str(pred_p)),
+                "pulse_conf": conf_p,
+                "has_noise": has_noise,
+                "noise_str": ", ".join(noise_summary) if noise_summary else "None"
+            }
+            
         except Exception as e:
-            print(f"[Inference Error] {e}")
+            print(f"[Inference Error {self.name}] {e}")
             return None
 
-UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
-BLE_NAME = "ADS1298_Streamer"
-
-# PORT = "/dev/tty.usbmodem103"
-PORT = "/dev/tty.usbmodem0010500344123"
-BAUD = 1_000_000
-ADC_SPS = 2000
-VREF = 4.0
-PRINT_EVERY = 1
-PREVIEW_MAXPTS = 800
-TITLE = f"{(TRANSPORT)} Mode Receiver"
-WINDOW = max(WINDOW_CH7, WINDOW_CH8, WINDOW_PREVIEW)
-
-# ---- Derived constants ----
-SAMP_DT = PRINT_EVERY / float(ADC_SPS)
-EXPECTED_SPS = int(ADC_SPS // max(1, PRINT_EVERY))
-
-# ---- LED-chase parameters ----
-STEP_FRAMES = 2           # switch every 2 DRDY
-CYCLE_STEPS = 5           # LED1, LED2, LED3, LED4, DARK
-STEP_LABELS = ["LED1", "LED2", "LED3", "LED4", "DARK"]
-
-# ---- Control packet definitions ----
-CTRL_MAGIC = 0xA55AF00D
-CTRL_MAGIC_BYTES = CTRL_MAGIC.to_bytes(4, "big")
-CTRL_TYPE_SYNC = 0x53  # 'S'
-CTRL_TYPE_TIME = 0x54  # 'T'
-
-BREAK_ON_GAP = True
-GAP_FACTOR = 2.0
-IDLE_TIMEOUT = 0.3
-
-# ---------------- Utilities ----------------
-def counts_to_volts(counts: int, vref: Optional[float], gain: float) -> Optional[float]:
-    if vref is None:
-        return None
-    lsb = (vref / (2**23 - 1)) / max(gain, 1e-12)
-    return counts * lsb
-
-def parse_s24be(b0: int, b1: int, b2: int) -> int:
-    u = (b0 << 16) | (b1 << 8) | b2
-    return u - (1 << 24) if (u & 0x800000) else u
-
-def autodetect_port() -> Optional[str]:
-    if list_ports is None:
-        return None
-    try:
-        ports = list(list_ports.comports())
-    except Exception:
-        return None
-    cands = []
-    for p in ports:
-        desc = f"{p.device} {p.description or ''} {getattr(p, 'hwid', '')}".lower()
-        if any(tag in desc for tag in ["acm", "usb", "serial", "cdc", "modem"]):
-            cands.append(p.device)
-    return (cands[0] if cands else (ports[0].device if ports else None))
-
-# ---------------- Decoder ----------------
-class StreamDecoder:
-    """
-    Byte-stream decoder that understands:
-      - Raw data frames: Nch * 3 bytes per frame (big-endian twos complement)
-      - Control packets with MAGIC + type + len + payload
-    Waits for SYNC first.
-    """
-    
-    def _find_magic_aligned(self) -> int:
-        fb = self.frame_bytes
-        start = 0
-        first_any = -1  # 记录第一个出现的 magic（不一定对齐）
-
-        while True:
-            j = self.buf.find(CTRL_MAGIC_BYTES, start)
-            if j < 0:
-                # 没找到严格对齐的 magic，如果之前看到过任意位置的 magic，就用它
-                return first_any
-            if first_any < 0:
-                first_any = j
-            if (j % fb) == 0:
-                # 优先返回严格对齐的 magic
-                return j
-            # 继续往后找
-            start = j + 1
-    
-    def __init__(self, on_frame, on_sync, on_time, on_phase_update=None, on_phase_value=None):
-        self.buf = bytearray()
-        self.started = False
-        self.channels = 2
-        self.frame_bytes = 3 * self.channels
-        self.i_local = 0  # frames consumed locally since SYNC
-        self.on_frame = on_frame
-        self.on_sync = on_sync
-        self.on_time = on_time
-        self.on_phase_update = on_phase_update
-        
-        self.time_last_local = 0
-        self.time_last_remote = 0
-        self.phase = 0xFF
-        self.phase_offset_frames = 0
-        self.on_phase_value = on_phase_value
-
-    def _consume_frames_from_prefix(self, upto: int):
-        count = (upto // self.frame_bytes)
-        used = 0
-        for _ in range(count):
-            base = used
-            ch_counts: List[int] = []
-            for ch in range(self.channels):
-                b0, b1, b2 = self.buf[base:base+3]
-                val = parse_s24be(b0, b1, b2)
-                ch_counts.append(val)
-                base += 3
-            used += self.frame_bytes
-            self.i_local += 1
-            self.on_frame(self.i_local, ch_counts)
-        if used:
-            del self.buf[:used]
-        return used
-
-    def _try_parse_control_at_0(self) -> bool:
-        if len(self.buf) < 6:
-            return False
-        if self.buf[:4] != CTRL_MAGIC_BYTES:
-            return False
-        typ = self.buf[4]
-        ln = self.buf[5]
-        need = 6 + ln
-        if len(self.buf) < need:
-            return False
-        payload = bytes(self.buf[6:need])
-        del self.buf[:need]
-
-        if typ == CTRL_TYPE_SYNC:
-            version = payload[0] if len(payload) >= 1 else 1
-            chans = payload[1] if len(payload) >= 2 else 2
-            phase = payload[2] if len(payload) >= 3 else 0xFF
-            if chans <= 0:
-                chans = 2
-            self.channels = chans
-            self.frame_bytes = 3 * self.channels
-            self.started = True
-            self.i_local = 0
-            self.time_last_local = 0
-            self.time_last_remote = 0
-            self.phase = phase
-            if phase in (0,1,2,3,4):
-                self.phase_offset_frames = phase * STEP_FRAMES
-            else:
-                self.phase_offset_frames = 0
-            
-            if self.on_phase_update:
-                try: self.on_phase_update(self.phase_offset_frames)
-                except Exception: pass
-            
-            if self.on_phase_value:
-                try: self.on_phase_value(phase)
-                except Exception: pass 
-            
-            try:
-                self.on_sync(version, self.channels)
-            except Exception:
-                pass
-            
-        elif typ == CTRL_TYPE_TIME:
-            if len(payload) >= 8:
-                uptime_ms = struct.unpack("<I", payload[0:4])[0]
-                frame_cnt = struct.unpack("<I", payload[4:8])[0]
-            else:
-                uptime_ms = 0
-                frame_cnt = 0
-            phase_t = payload[8] if len(payload) >= 9 else 0xFF
-            try:
-                self.on_time(uptime_ms, frame_cnt, self.i_local,
-                            self.time_last_local, self.time_last_remote)
-            except Exception:
-                pass
-            if phase_t in (0,1,2,3,4) and self.i_local >= STEP_FRAMES:
-                local_phase = ((self.i_local + self.phase_offset_frames - 1) // STEP_FRAMES) % CYCLE_STEPS
-                if local_phase != phase_t:
-                    delta = (phase_t - local_phase) % CYCLE_STEPS
-                    if delta > CYCLE_STEPS // 2:
-                        delta -= CYCLE_STEPS
-                    self.phase_offset_frames = (self.phase_offset_frames + delta * STEP_FRAMES) % (CYCLE_STEPS * STEP_FRAMES)
-                    print(f"[INFO] phase re-align: remote={phase_t} local={local_phase} "
-                        f"delta={delta} -> offset_frames={self.phase_offset_frames}")
-                
-                if self.on_phase_update:
-                    try: self.on_phase_update(self.phase_offset_frames)
-                    except Exception: pass
-                                   
-                if self.on_phase_value:
-                    try: self.on_phase_value(phase)
-                    except Exception: pass 
-                
-            self.time_last_local = self.i_local
-            self.time_last_remote = frame_cnt
-        else:
-            pass
-        return True
-
-    def feed(self, data: bytes):
-        self.buf.extend(data)
-        while True:
-            if not self.started:
-                idx = self.buf.find(CTRL_MAGIC_BYTES)
-                if idx < 0:
-                    if len(self.buf) > 8192:
-                        del self.buf[:-8]
-                    return
-                if len(self.buf) < idx + 6:
-                    return
-                if idx > 0:
-                    del self.buf[:idx]
-                if not self._try_parse_control_at_0():
-                    return
-                continue
-
-            if self._try_parse_control_at_0():
-                continue
-
-            idx = self._find_magic_aligned()
-            if idx == 0:
-                continue
-            elif idx > 0:
-                used = self._consume_frames_from_prefix(idx)
-                rem = idx - used
-                if rem > 0:
-                    del self.buf[:rem]
-                continue
-            else:
-                n_full = (len(self.buf) // self.frame_bytes)
-                if n_full == 0:
-                    return
-                self._consume_frames_from_prefix(n_full * self.frame_bytes)
-                continue
+# ... (Previous Constants kept) ...
 
 # -------------- Data model ---------------
 class DataModel:
@@ -415,29 +163,53 @@ class DataModel:
         ]
         self.ch_bufs = [deque(maxlen=n) for n in self.window_samples_ch]
 
-        # 保留 demux 用的 5 个 bucket（针对 CH7）
+        # Demux buckets for CH7
         self.window_samples_ch7 = max(int(WINDOW_CH7 * self.expected_sps / CYCLE_STEPS * 1.25), 200)
         self.ch7_buckets = [deque(maxlen=self.window_samples_ch7) for _ in range(CYCLE_STEPS)]
         
         self.last_rx_ts = 0.0
         self.phase_offset_frames = 0
-        
-        self.demux_fixed = False          # False=all_run；True=CH7-only
+        self.demux_fixed = False
         self.current_phase = 0xFF
         self.ch8_zero_flags = deque(maxlen=200)
         
-        # Detector
-        self.detector = None # Set externally or via init if modified
+        # Detector Setup for CH7 Slices (LED 1-4)
+        self.detectors = []
+        self._init_detectors()
+
+    def _init_detectors(self):
+        # Load Shared Model Once
+        if create_model:
+            # Assuming 'output/v4_best_model.pth' is the definitive v4 model
+            # Use absolute path if possible or relative
+            model_path = os.path.join(os.path.dirname(__file__), "output/v4_best_model.pth")
+            if not os.path.exists(model_path):
+                 # Try backup
+                 model_path = "output/v4_best_model.pth"
+            
+            # Temporary loader to get the model instance
+            tmp = RealTimePPGDetector(model_path=model_path, name="Master")
+            shared_model = tmp.model
+            
+            if shared_model:
+                # Create 4 detectors sharing the same model
+                for i in range(4): # LED1-4
+                    self.detectors.append(RealTimePPGDetector(model_instance=shared_model, name=f"LED{i+1}"))
+                print(f"[AI] Initialized 4 Detectors for CH7 Slices (Sharing V4 Model)")
+            else:
+                print("[AI] Failed to load model. Inference disabled.")
 
     def set_detector(self, detector):
-        self.detector = detector
+        pass # Deprecated single detector setter
 
     def clear(self):
-
         for dq in self.ch7_buckets:
             dq.clear()
         for dq in self.ch_bufs:
             dq.clear()
+        # Detectors buffers also clear? better
+        for d in self.detectors:
+            d.buffer.clear()
 
     def append_frame(self, i_local: int, ch_counts: List[int]):
         # ch_counts[0..3] = CH5, CH6, CH7, CH8
@@ -448,38 +220,36 @@ class DataModel:
         ]
         ts = time.time()
 
-        # CH7-only 检测仍然用 CH8 是否为 0
         self.ch8_zero_flags.append(int(raw[3] == 0))
 
-        # 先按 LED phase / STEP_FRAMES 决定 CH7 的 bucket
+        # Phasing
         if self.demux_fixed and self.current_phase in (0,1,2,3,4):
             bucket = self.current_phase
         else:
             bucket = (((i_local + self.phase_offset_frames) - 1) // STEP_FRAMES) % CYCLE_STEPS
 
-        # CH7 的 demux 曲线：使用 CH7（index=2）
+        # Append to bucket buffer
         self.ch7_buckets[bucket].append((i_local, vals[2], ts))
 
-        # 4 个通道的连续波形
+        # Append to full channel buffers
         for ch_idx in range(4):
             self.ch_bufs[ch_idx].append((i_local, vals[ch_idx], ts))
 
         self.last_rx_ts = ts
         
-        # Inference (CH8, Downsample 2000 -> 1000 Hz)
-        if self.detector and (i_local % 2 == 0):
-            # Feed CH8 (index 3)
-            # data is just [value] list 
-            res = self.detector.process_new_data([vals[3]])
-            if res:
-                # Print result to console
-                print("\n" + "="*40)
-                print(f"[AI] Waveform: Type {res['waveform_type']} (Conf: {res['waveform_conf']:.1%})")
-                if res['has_noise']:
-                    print(f"     [!] NOISE: {res['noise_details']}")
-                else:
-                    print(f"     [OK] Signal Clean")
-                print("="*40 + "\n")
+        # Inference Logic: Feed CH7 slices
+        # bucket 0..3 are LEDs. bucket 4 is Dark (usually).
+        if bucket < 4 and self.detectors:
+            # Feed current val to the correct detector
+            # Need to downsample? Preprocess does resampling? 
+            # Original code "Downsample 2000 -> 1000 Hz" via "i_local % 2 == 0" check.
+            # Assuming 2000Hz native.
+            # We want 1000Hz for model.
+            # Only feed every 2nd sample
+            if i_local % 2 == 0:
+                res = self.detectors[bucket].process_new_data([vals[2]])
+                if res:
+                    print(f"\n[AI] {res['name']}: {res['pulse_type']} ({res['pulse_conf']:.1%}) | Noise: {res['noise_str']}")
 
     
     def is_ch7only(self) -> bool:

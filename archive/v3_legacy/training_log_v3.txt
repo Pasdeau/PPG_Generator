@@ -1,0 +1,118 @@
+==========================================
+PPG Classification Model Training
+Start Time: Sun Dec 21 09:01:16 AM CET 2025
+==========================================
+Running in: /home/wenwang
+Dataset Path: ~/ppg_training_data_v3
+Error: Dataset not found: ~/ppg_training_data_v3
+Please check if data generation completed successfully.
+Warning: signals directory missing?
+Dataset Sample Count: 0
+
+GPU Info:
+Sun Dec 21 09:01:16 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 565.57.01              Driver Version: 565.57.01      CUDA Version: 12.7     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100 80GB PCIe          On  |   00000000:CA:00.0 Off |                   On |
+| N/A   68C    P0            210W /  300W |   14976MiB /  81920MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| MIG devices:                                                                            |
++------------------+----------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |                     Memory-Usage |        Vol|        Shared         |
+|      ID  ID  Dev |                       BAR1-Usage | SM     Unc| CE ENC  DEC  OFA  JPG |
+|                  |                                  |        ECC|                       |
+|==================+==================================+===========+=======================|
+|  0    1   0   0  |              38MiB / 40192MiB    | 42      0 |  3   0    2    0    0 |
+|                  |                 0MiB / 65535MiB  |           |                       |
++------------------+----------------------------------+-----------+-----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+==========================================
+Starting Training - v3.0 CWT Frequency-Enhanced Model
+==========================================
+Using device: cuda
+Loading data from ~/ppg_training_data_v3...
+Loaded 20000 samples
+
+Dataset Split:
+  Train: 14000 samples
+  Val:   3000 samples
+  Test:  3000 samples
+Creating UNet...
+Logging to checkpoints_cwt_v3/training_log.csv
+Starting Training...
+  [Train] Loss: 6.4634 | Classifier Acc: 19.70% | Seg Acc: 87.35%
+  [Val]   Loss: 4.2122 | Classifier Acc: 18.73% | Seg Acc: 94.55%
+  [INFO] Saved Best Model
+  [Train] Loss: 4.2447 | Classifier Acc: 20.55% | Seg Acc: 94.12%
+  [Val]   Loss: 4.7879 | Classifier Acc: 19.89% | Seg Acc: 91.59%
+  [Train] Loss: 3.9036 | Classifier Acc: 19.64% | Seg Acc: 95.00%
+  [Val]   Loss: 3.0276 | Classifier Acc: 19.45% | Seg Acc: 97.17%
+  [INFO] Saved Best Model
+  [Train] Loss: 3.6181 | Classifier Acc: 20.07% | Seg Acc: 95.76%
+  [Val]   Loss: 5.2691 | Classifier Acc: 19.45% | Seg Acc: 92.26%
+  [Train] Loss: 3.4711 | Classifier Acc: 20.13% | Seg Acc: 96.05%
+  [Val]   Loss: 3.9807 | Classifier Acc: 19.45% | Seg Acc: 94.89%
+  [Train] Loss: 3.3859 | Classifier Acc: 20.29% | Seg Acc: 96.24%
+  [Val]   Loss: 3.7786 | Classifier Acc: 19.45% | Seg Acc: 95.72%
+  [Train] Loss: 3.4444 | Classifier Acc: 20.12% | Seg Acc: 96.18%
+  [Val]   Loss: 5.7668 | Classifier Acc: 19.45% | Seg Acc: 91.02%
+  [Train] Loss: 3.2401 | Classifier Acc: 20.26% | Seg Acc: 96.60%
+  [Val]   Loss: 2.8654 | Classifier Acc: 19.45% | Seg Acc: 97.47%
+  [INFO] Saved Best Model
+  [Train] Loss: 3.0476 | Classifier Acc: 19.99% | Seg Acc: 97.00%
+  [Val]   Loss: 2.9433 | Classifier Acc: 19.45% | Seg Acc: 97.01%
+  [Train] Loss: 3.0997 | Classifier Acc: 19.81% | Seg Acc: 96.96%
+  [Val]   Loss: 2.7772 | Classifier Acc: 19.45% | Seg Acc: 97.52%
+  [INFO] Saved Best Model
+  [Train] Loss: 3.2323 | Classifier Acc: 19.73% | Seg Acc: 96.62%
+  [Val]   Loss: 3.0303 | Classifier Acc: 19.45% | Seg Acc: 96.94%
+  [Train] Loss: 3.0697 | Classifier Acc: 19.65% | Seg Acc: 97.04%
+  [Val]   Loss: 3.0847 | Classifier Acc: 19.45% | Seg Acc: 97.01%
+  [Train] Loss: 3.0128 | Classifier Acc: 20.11% | Seg Acc: 97.15%
+  [Val]   Loss: 2.6559 | Classifier Acc: 19.45% | Seg Acc: 98.02%
+  [INFO] Saved Best Model
+  [Train] Loss: 2.9144 | Classifier Acc: 20.11% | Seg Acc: 97.41%
+  [Val]   Loss: 2.6792 | Classifier Acc: 19.45% | Seg Acc: 97.85%
+  [Train] Loss: 3.2483 | Classifier Acc: 20.25% | Seg Acc: 96.71%
+  [Val]   Loss: 2.9201 | Classifier Acc: 19.45% | Seg Acc: 97.78%
+  [Train] Loss: 2.9198 | Classifier Acc: 20.08% | Seg Acc: 97.32%
+  [Val]   Loss: 32.0592 | Classifier Acc: 19.45% | Seg Acc: 70.83%
+  [Train] Loss: 2.9137 | Classifier Acc: 19.98% | Seg Acc: 97.36%
+  [Val]   Loss: 2.6273 | Classifier Acc: 19.45% | Seg Acc: 98.07%
+  [INFO] Saved Best Model
+  [Train] Loss: 2.8784 | Classifier Acc: 19.96% | Seg Acc: 97.40%
+  [Val]   Loss: 2.5651 | Classifier Acc: 19.45% | Seg Acc: 98.28%
+  [INFO] Saved Best Model
+  [Train] Loss: 2.9393 | Classifier Acc: 20.27% | Seg Acc: 97.27%
+  [Val]   Loss: 4.2323 | Classifier Acc: 19.45% | Seg Acc: 94.90%
+  [Train] Loss: 2.8651 | Classifier Acc: 20.02% | Seg Acc: 97.56%
+  [Val]   Loss: 2.7505 | Classifier Acc: 19.45% | Seg Acc: 97.82%
+  [Train] Loss: 2.9070 | Classifier Acc: 19.79% | Seg Acc: 97.35%
+  [Val]   Loss: 2.5690 | Classifier Acc: 19.45% | Seg Acc: 98.10%
+  [Train] Loss: 2.9047 | Classifier Acc: 20.04% | Seg Acc: 97.44%
+  [Val]   Loss: 2.8639 | Classifier Acc: 19.45% | Seg Acc: 97.31%
+  [Train] Loss: 2.7982 | Classifier Acc: 20.18% | Seg Acc: 97.61%
+  [Val]   Loss: 2.5008 | Classifier Acc: 19.45% | Seg Acc: 98.26%
+  [INFO] Saved Best Model
+  [Train] Loss: 2.7229 | Classifier Acc: 20.11% | Seg Acc: 97.74%
+  [Val]   Loss: 2.5010 | Classifier Acc: 19.45% | Seg Acc: 98.28%
+  [Train] Loss: 2.8717 | Classifier Acc: 19.81% | Seg Acc: 97.44%
+  [Val]   Loss: 2.7283 | Classifier Acc: 19.45% | Seg Acc: 97.89%
+  [Train] Loss: 2.8531 | Classifier Acc: 20.24% | Seg Acc: 97.56%
+  [Val]   Loss: 2.8625 | Classifier Acc: 19.45% | Seg Acc: 97.36%
