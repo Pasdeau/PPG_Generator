@@ -1,0 +1,9 @@
+# ML Training Requirements
+# PyTorch和相关深度学习库
+
+torch>=2.0.0
+torchvision>=0.15.0
+tensorboard>=2.12.0
+scikit-learn>=1.2.0
+seaborn>=0.12.0
+tqdm>=4.65.0

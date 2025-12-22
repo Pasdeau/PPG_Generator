@@ -47,10 +47,9 @@ data/PPG_3.mat
 
 # Generated outputs
 output/
-*.png
-*.jpg
-*.jpeg
-*.npz
+
+# But allow key demo results
+!streaming_inference_results.png
 
 # Training outputs
 checkpoints/
@@ -59,6 +58,10 @@ runs/
 logs/
 *.pth
 *.pt
+
+# But allow pre-trained release models
+!output/v4_best_model.pth
+!ADS1298_Receiver_v4/v4_best_model.pth
 
 # Generated datasets
 batch_demo/
@@ -75,14 +78,14 @@ dataset/
 *.swp
 *~
 
-# Compressed files
+# Compressed files (but allow critical archives)
 *.zip
 *.rar
 
 # CSV exports
 *.csv
 
-# Test files
+# Test files (but allow core tests/)
 test_*.py
 diagnose_*.py
 *.tar.gz
@@ -115,6 +118,7 @@ post/
 
 # Debug files
 
-# ADS1298 Receiver (Local Only)
+# ADS1298 Receiver - Allow for public release
+# (But keep serial script clean by not duplicating)
 ads1298_serial.py
-ADS1298_Receiver_v4/
+# Do NOT ignore ADS1298_Receiver_v4/ - it contains hardware integration
