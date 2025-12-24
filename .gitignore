@@ -49,7 +49,9 @@ data/PPG_3.mat
 output/
 
 # But allow key demo results
-!streaming_inference_results.png
+streaming_inference_results.png
+validation_v4_overlay/
+validation_v4_variable/
 
 # Training outputs
 checkpoints/
@@ -114,7 +116,7 @@ validation_batch/
 paper/
 
 # Blog Posts (Local Only)
-post/
+
 
 # Debug files
 
